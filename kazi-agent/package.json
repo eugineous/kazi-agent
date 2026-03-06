@@ -1,0 +1,83 @@
+{
+  "name": "kazi-agent",
+  "version": "2.0.0",
+  "description": "Kazi — AI Desktop Agent with embedded browser, memory & secure accounts",
+  "main": "src/main.js",
+  "scripts": {
+    "start":       "electron .",
+    "build":       "electron-builder",
+    "build:win":   "electron-builder --win",
+    "build:mac":   "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "icons":       "python python/create_icon.py"
+  },
+  "build": {
+    "appId":       "com.kazi.agent",
+    "productName": "Kazi Agent",
+    "copyright":   "© 2025 Kazi Agent",
+    "directories": { "output": "dist" },
+
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "!assets/logo.svg",
+      "!**/*.map"
+    ],
+
+    "extraResources": [
+      {
+        "from":   "python",
+        "to":     "python",
+        "filter": ["**/*.py", "requirements.txt"]
+      }
+    ],
+
+    "win": {
+      "target":        [{ "target": "nsis", "arch": ["x64"] }],
+      "icon":          "assets/icon.png",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick":                      false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut":         true,
+      "createStartMenuShortcut":       true,
+      "shortcutName":                  "Kazi Agent",
+      "installerIcon":                 "assets/icon.png",
+      "uninstallerIcon":               "assets/icon.png",
+      "runAfterFinish":                true,
+      "perMachine":                    false,
+      "installerHeaderIcon":           "assets/icon.png",
+      "license":                       "LICENSE.txt"
+    },
+
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "icon":   "assets/icon.png",
+      "category": "public.app-category.productivity"
+    },
+    "dmg": {
+      "title": "Kazi Agent ${version}"
+    },
+
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon":   "assets/icon.png",
+      "category": "Utility"
+    }
+  },
+
+  "keywords": ["ai", "agent", "desktop", "automation", "gemini", "productivity"],
+  "author":   "Kazi Agent",
+  "license":  "MIT",
+
+  "devDependencies": {
+    "electron":         "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+
+  "dependencies": {
+    "dotenv":     "^16.3.1",
+    "node-fetch": "^3.3.2"
+  }
+}

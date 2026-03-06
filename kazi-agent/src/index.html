@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kazi Agent</title>
+  <style>
+    /* ── RESET & ROOT ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:   #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary:  #1c2333;
+      --bg-card:      #21262d;
+      --border:       #30363d;
+      --cyan:         #00d9ff;
+      --cyan-dim:     rgba(0,217,255,.15);
+      --cyan-border:  rgba(0,217,255,.35);
+      --text:         #e6edf3;
+      --text-muted:   #8b949e;
+      --text-dim:     #484f58;
+      --success:      #3fb950;
+      --warning:      #d29922;
+      --error:        #f85149;
+      --radius:       12px;
+      --radius-sm:    8px;
+      --shadow:       0 8px 32px rgba(0,0,0,.6);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .screen { display: flex; flex-direction: column; height: 100vh; }
+    .hidden { display: none !important; }
+
+    /* ════════════════════════════════════════════════════════════════════
+       AUTH SCREEN
+    ════════════════════════════════════════════════════════════════════ */
+    #screen-auth {
+      background: linear-gradient(145deg, #0d1117 0%, #1a1a2e 60%, #16213e 100%);
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+      -webkit-app-region: drag;
+    }
+    #screen-auth > * { -webkit-app-region: no-drag; }
+
+    .auth-logo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .auth-logo svg { width: 72px; height: 72px; filter: drop-shadow(0 0 16px rgba(0,217,255,.5)); }
+    .auth-logo-name {
+      font-size: 28px; font-weight: 800; letter-spacing: 6px;
+      background: linear-gradient(135deg, #00e5ff, #0077ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .auth-logo-tagline { font-size: 12px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+
+    .auth-card {
+      width: 100%; max-width: 340px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .auth-tab {
+      flex: 1; padding: 10px;
+      background: none; border: none;
+      color: var(--text-muted); font-size: 14px; font-weight: 600; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all .2s;
+    }
+    .auth-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .auth-tab:hover:not(.active) { color: var(--text); }
+
+    .auth-form { display: none; flex-direction: column; gap: 12px; }
+    .auth-form.active { display: flex; }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    .form-input {
+      padding: 11px 14px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text); font-size: 14px; outline: none;
+      transition: border-color .2s; -webkit-app-region: no-drag;
+    }
+    .form-input:focus { border-color: var(--cyan); }
+    .form-input::placeholder { color: var(--text-dim); }
+
+    .api-key-hint { font-size: 11px; color: var(--text-muted); }
+    .api-key-hint a { color: var(--cyan); cursor: pointer; text-decoration: none; }
+    .api-key-hint a:hover { text-decoration: underline; }
+
+    .btn-primary {
+      padding: 12px; background: linear-gradient(135deg, #00b4d8, #0077ff);
+      border: none; border-radius: var(--radius-sm);
+      color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: opacity .2s, transform .1s; letter-spacing: .5px;
+    }
+    .btn-primary:hover { opacity: .9; }
+    .btn-primary:active { transform: scale(.98); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .auth-error { font-size: 12px; color: var(--error); text-align: center; min-height: 16px; }
+
+    /* ════════════════════════════════════════════════════════════════════
+       APP SCREEN
+    ════════════════════════════════════════════════════════════════════ */
+    #screen-app { background: var(--bg-primary); position: relative; }
+
+    /* TITLEBAR */
+    .titlebar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 12px; height: 42px;
+      background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+      -webkit-app-region: drag; flex-shrink: 0;
+    }
+    .titlebar > * { -webkit-app-region: no-drag; }
+    .tb-left { display: flex; align-items: center; gap: 8px; -webkit-app-region: drag; }
+    .tb-left > * { -webkit-app-region: no-drag; }
+    .tb-logo { display: flex; align-items: center; gap: 7px; }
+    .tb-logo svg { width: 22px; height: 22px; }
+    .tb-logo-text {
+      font-size: 15px; font-weight: 800; letter-spacing: 3px;
+      background: linear-gradient(135deg, #00e5ff, #0077ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .tb-right { display: flex; align-items: center; gap: 4px; }
+    .tb-btn {
+      width: 28px; height: 28px; background: none; border: none;
+      color: var(--text-muted); font-size: 16px; cursor: pointer;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s;
+    }
+    .tb-btn:hover { background: var(--bg-tertiary); color: var(--text); }
+    .tb-btn.close:hover { background: rgba(248,81,73,.2); color: var(--error); }
+    .user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: 20px; color: var(--text); font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: border-color .2s;
+    }
+    .user-btn:hover { border-color: var(--cyan-border); }
+    .user-avatar {
+      width: 20px; height: 20px;
+      background: linear-gradient(135deg, #00b4d8, #0077ff);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+
+    /* TAB NAV */
+    .tab-nav { display: flex; background: var(--bg-secondary); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tab-btn {
+      flex: 1; padding: 9px 4px; background: none; border: none;
+      color: var(--text-muted); font-size: 11px; font-weight: 600; cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all .2s;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .tab-btn .tab-icon { font-size: 15px; }
+    .tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .tab-btn:hover:not(.active) { color: var(--text); background: var(--bg-tertiary); }
+
+    /* BROWSER URL BAR */
+    .browser-bar {
+      display: none; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      background: var(--bg-secondary); border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .browser-bar.visible { display: flex; }
+    .browser-nav-btn {
+      width: 26px; height: 26px; background: none; border: none;
+      color: var(--text-muted); font-size: 17px; cursor: pointer;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .browser-nav-btn:hover { background: var(--bg-tertiary); color: var(--text); }
+    .url-input {
+      flex: 1; padding: 7px 12px;
+      background: var(--bg-primary); border: 1px solid var(--border);
+      border-radius: 20px; color: var(--text); font-size: 13px; outline: none;
+    }
+    .url-input:focus { border-color: var(--cyan); }
+
+    /* TAB PANES */
+    .tab-content { flex: 1; overflow: hidden; position: relative; }
+    .tab-pane { display: none; height: 100%; flex-direction: column; }
+    .tab-pane.active { display: flex; }
+
+    /* CHAT */
+    .chat-container {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth;
+    }
+    .chat-container::-webkit-scrollbar { width: 4px; }
+    .chat-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg {
+      max-width: 88%; padding: 10px 14px; border-radius: 14px;
+      font-size: 13.5px; line-height: 1.55; word-break: break-word;
+      animation: fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+    .msg.user { align-self: flex-end; background: linear-gradient(135deg,#00b4d8,#0077ff); color: #fff; border-bottom-right-radius: 4px; }
+    .msg.agent { align-self: flex-start; background: var(--bg-card); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .msg.agent.done  { border-color: rgba(63,185,80,.4); }
+    .msg.agent.error { border-color: rgba(248,81,73,.4); color: #ffa0a0; }
+    .msg.status {
+      align-self: center; background: rgba(0,217,255,.08); color: var(--cyan);
+      border: 1px solid var(--cyan-border); font-size: 12px; border-radius: 20px; padding: 6px 14px;
+    }
+    .typing { display: flex; align-items: center; gap: 4px; padding: 10px 14px; }
+    .typing span {
+      width: 7px; height: 7px; background: var(--cyan); border-radius: 50%;
+      animation: blink 1.2s infinite;
+    }
+    .typing span:nth-child(2){animation-delay:.2s} .typing span:nth-child(3){animation-delay:.4s}
+    @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+    .input-area {
+      display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px;
+      background: var(--bg-secondary); border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    #commandInput {
+      flex: 1; padding: 10px 14px;
+      background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: 20px; color: var(--text); font-size: 13.5px;
+      resize: none; outline: none; max-height: 120px; overflow-y: auto;
+      line-height: 1.4; font-family: inherit;
+    }
+    #commandInput:focus { border-color: var(--cyan); }
+    #commandInput::placeholder { color: var(--text-dim); }
+    #sendBtn {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #00b4d8, #0077ff);
+      border: none; border-radius: 50%; color: #fff; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: transform .1s, opacity .2s;
+    }
+    #sendBtn:hover { opacity: .9; } #sendBtn:active { transform: scale(.92); }
+    #sendBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* BROWSER TAB */
+    .browser-placeholder {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px; color: var(--text-muted); padding: 20px;
+    }
+    .browser-placeholder svg { opacity: .3; }
+    .browser-placeholder p { font-size: 14px; }
+    .quick-links { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .quick-link-btn {
+      padding: 7px 14px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 20px;
+      color: var(--text); font-size: 13px; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .quick-link-btn:hover { border-color: var(--cyan-border); background: var(--bg-tertiary); }
+
+    /* MEMORY TAB */
+    #tab-memory { flex-direction: column; overflow: hidden; }
+    .memory-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .memory-header h3 { font-size: 14px; font-weight: 600; }
+    .btn-danger {
+      padding: 6px 12px; background: rgba(248,81,73,.1);
+      border: 1px solid rgba(248,81,73,.3); border-radius: var(--radius-sm);
+      color: var(--error); font-size: 12px; cursor: pointer; transition: background .2s;
+    }
+    .btn-danger:hover { background: rgba(248,81,73,.2); }
+    .memory-list {
+      flex: 1; overflow-y: auto; padding: 10px 14px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .memory-list::-webkit-scrollbar { width: 4px; }
+    .memory-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .memory-item {
+      padding: 9px 13px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 10px;
+      font-size: 12.5px; line-height: 1.5;
+    }
+    .mem-role { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+    .memory-item.user-mem .mem-role  { color: #4d9de0; }
+    .memory-item.agent-mem .mem-role { color: var(--cyan); }
+    .mem-text { color: var(--text-muted); }
+    .mem-time { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+    .memory-empty { text-align: center; color: var(--text-dim); font-size: 13px; padding: 40px 20px; }
+
+    /* SETTINGS TAB */
+    #tab-settings { overflow-y: auto; padding: 14px; gap: 14px; }
+    #tab-settings::-webkit-scrollbar { width: 4px; }
+    #tab-settings::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .settings-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .settings-card h3 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+    .profile-info { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .profile-avatar {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #00b4d8, #0077ff);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .profile-name  { font-size: 15px; font-weight: 600; }
+    .profile-email { font-size: 12px; color: var(--text-muted); }
+    .api-key-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .api-key-row .form-input { flex: 1; }
+    .btn-icon {
+      width: 38px; background: var(--bg-tertiary); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-muted); font-size: 16px;
+      cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .btn-icon:hover { color: var(--text); }
+    .btn-secondary {
+      padding: 9px 14px; background: var(--bg-tertiary);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text); font-size: 13px; cursor: pointer;
+      transition: border-color .2s; width: 100%; text-align: center; margin-bottom: 8px;
+    }
+    .btn-secondary:hover { border-color: var(--cyan-border); }
+    .settings-link { display: block; font-size: 12px; color: var(--cyan); text-align: center; cursor: pointer; margin-bottom: 4px; }
+    .settings-link:hover { text-decoration: underline; }
+    .key-status { font-size: 12px; padding: 3px 0; margin-bottom: 8px; }
+    .key-status.set   { color: var(--success); }
+    .key-status.unset { color: var(--warning); }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13.5px;
+    }
+    .toggle-row:last-of-type { border-bottom: none; }
+    .toggle-label-group {}
+    .toggle-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 11px; cursor: pointer; transition: background .2s; }
+    .toggle-slider::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition: transform .2s; }
+    .toggle input:checked + .toggle-slider               { background: var(--cyan); }
+    .toggle input:checked + .toggle-slider::before       { transform: translateX(18px); }
+    .btn-save {
+      margin-top: 14px; padding: 10px;
+      background: linear-gradient(135deg, #00b4d8, #0077ff);
+      border: none; border-radius: var(--radius-sm);
+      color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+      width: 100%; transition: opacity .2s;
+    }
+    .btn-save:hover { opacity: .88; }
+    .about-info { font-size: 13px; color: var(--text-muted); line-height: 1.8; }
+    .about-info strong { color: var(--text); }
+    .about-badge {
+      display: inline-block; margin-top: 10px; padding: 4px 10px;
+      background: var(--cyan-dim); border: 1px solid var(--cyan-border);
+      border-radius: 20px; font-size: 11px; color: var(--cyan); font-weight: 600;
+    }
+
+    /* STATUS BAR */
+    .status-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 14px; background: var(--bg-secondary); border-top: 1px solid var(--border);
+      font-size: 11px; color: var(--text-muted); flex-shrink: 0;
+    }
+    .status-indicator { display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); transition: background .3s; }
+    .status-dot.warning { background: var(--warning); }
+    .status-dot.error   { background: var(--error);   animation: pulse 1.5s infinite; }
+    .status-dot.loading { background: var(--cyan);    animation: pulse 1s infinite; }
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    /* USER DROPDOWN */
+    #user-dropdown {
+      position: absolute; top: 46px; right: 10px;
+      width: 210px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow); z-index: 999; overflow: hidden;
+    }
+    .dropdown-header { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .dropdown-user-name  { font-size: 13px; font-weight: 600; }
+    .dropdown-user-email { font-size: 11px; color: var(--text-muted); }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; font-size: 13px; cursor: pointer; transition: background .15s;
+    }
+    .dropdown-item:hover  { background: var(--bg-tertiary); }
+    .dropdown-item.danger { color: var(--error); }
+
+    /* TOAST */
+    #toast-container {
+      position: fixed; bottom: 44px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+    }
+    .toast {
+      padding: 9px 18px; border-radius: 20px; font-size: 12.5px; font-weight: 500;
+      animation: toastIn .3s ease; white-space: nowrap;
+    }
+    .toast.success { background: rgba(63,185,80,.92);  color: #fff; }
+    .toast.error   { background: rgba(248,81,73,.92);  color: #fff; }
+    .toast.info    { background: rgba(0,217,255,.92);  color: #000; }
+    @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     AUTH SCREEN
+═══════════════════════════════════════════════ -->
+<div id="screen-auth" class="screen">
+  <div class="auth-logo">
+    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="al-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1a1a2e"/><stop offset="100%" stop-color="#0d1117"/>
+        </linearGradient>
+        <linearGradient id="al-c" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#0077ff"/>
+        </linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="96" fill="url(#al-bg)"/>
+      <rect x="6" y="6" width="500" height="500" rx="92" fill="none" stroke="url(#al-c)" stroke-width="4" opacity="0.35"/>
+      <rect x="108" y="100" width="72" height="312" rx="14" fill="url(#al-c)"/>
+      <polygon points="180,256 180,212 402,100 402,154" fill="url(#al-c)"/>
+      <polygon points="180,256 180,300 402,412 402,358" fill="url(#al-c)"/>
+      <polygon points="290,210 268,276 284,276 262,342 308,268 290,268 314,210" fill="url(#al-c)" opacity="0.6"/>
+    </svg>
+    <div class="auth-logo-name">KAZI</div>
+    <div class="auth-logo-tagline">Your AI Desktop Agent</div>
+  </div>
+
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Sign In</button>
+      <button class="auth-tab" data-tab="signup">Create Account</button>
+    </div>
+
+    <!-- LOGIN -->
+    <form id="form-login" class="auth-form active" onsubmit="return false">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="login-email" class="form-input" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="login-password" class="form-input" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="login-error" class="auth-error"></div>
+      <button type="submit" class="btn-primary" id="btn-login">Sign In</button>
+    </form>
+
+    <!-- SIGNUP -->
+    <form id="form-signup" class="auth-form" onsubmit="return false">
+      <div class="form-group">
+        <label class="form-label">Your Name</label>
+        <input type="text" id="signup-name" class="form-input" placeholder="Your full name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="signup-email" class="form-input" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="signup-password" class="form-input" placeholder="Min 6 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          Gemini API Key
+          <span style="color:var(--text-dim);font-weight:400"> — optional, add later in Settings</span>
+        </label>
+        <input type="text" id="signup-apikey" class="form-input" placeholder="AIzaSy…">
+        <span class="api-key-hint">
+          No key? <a id="get-key-link-signup">Get one free at AI Studio ↗</a>
+        </span>
+      </div>
+      <div id="signup-error" class="auth-error"></div>
+      <button type="submit" class="btn-primary" id="btn-signup">Create Account</button>
+    </form>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     MAIN APP SCREEN
+═══════════════════════════════════════════════ -->
+<div id="screen-app" class="screen hidden">
+
+  <!-- TITLEBAR -->
+  <div class="titlebar">
+    <div class="tb-left">
+      <div class="tb-logo">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="tl-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1a1a2e"/><stop offset="100%" stop-color="#0d1117"/>
+            </linearGradient>
+            <linearGradient id="tl-c" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#0077ff"/>
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="96" fill="url(#tl-bg)"/>
+          <rect x="108" y="100" width="72" height="312" rx="14" fill="url(#tl-c)"/>
+          <polygon points="180,256 180,212 402,100 402,154" fill="url(#tl-c)"/>
+          <polygon points="180,256 180,300 402,412 402,358" fill="url(#tl-c)"/>
+        </svg>
+        <span class="tb-logo-text">KAZI</span>
+      </div>
+    </div>
+    <div class="tb-right">
+      <button class="user-btn" id="btn-user-menu">
+        <div class="user-avatar" id="tb-avatar">K</div>
+        <span id="tb-username">User</span>
+      </button>
+      <button class="tb-btn" id="btn-minimize" title="Hide (Ctrl+Shift+K)">—</button>
+      <button class="tb-btn close" id="btn-close" title="Close to tray">✕</button>
+    </div>
+  </div>
+
+  <!-- TAB NAV -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="chat">  <span class="tab-icon">💬</span>Chat   </button>
+    <button class="tab-btn"        data-tab="browser"><span class="tab-icon">🌐</span>Browser</button>
+    <button class="tab-btn"        data-tab="memory"> <span class="tab-icon">🧠</span>Memory </button>
+    <button class="tab-btn"        data-tab="settings"><span class="tab-icon">⚙️</span>Settings</button>
+  </nav>
+
+  <!-- BROWSER URL BAR -->
+  <div class="browser-bar" id="browser-bar">
+    <button class="browser-nav-btn" id="btn-back"    title="Back">‹</button>
+    <button class="browser-nav-btn" id="btn-forward" title="Forward">›</button>
+    <input type="text" class="url-input" id="url-input" placeholder="Search or enter URL…">
+    <button class="browser-nav-btn" id="btn-reload"  title="Reload">↻</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="tab-content">
+
+    <!-- CHAT -->
+    <div id="tab-chat" class="tab-pane active">
+      <div class="chat-container" id="chatContainer">
+        <div class="msg agent">
+          Hey! I'm <strong>Kazi</strong> ⚡ — your AI desktop agent.<br>
+          Tell me what to do and I'll handle it on your screen.
+        </div>
+      </div>
+      <div class="input-area">
+        <textarea id="commandInput" placeholder="Ask Kazi anything… (Enter to send)" rows="1"></textarea>
+        <button id="sendBtn" title="Send">▶</button>
+      </div>
+    </div>
+
+    <!-- BROWSER -->
+    <div id="tab-browser" class="tab-pane">
+      <div class="browser-placeholder" id="browser-placeholder">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <p>Enter a URL above or click a quick link</p>
+        <div class="quick-links">
+          <button class="quick-link-btn" data-url="https://google.com">🔍 Google</button>
+          <button class="quick-link-btn" data-url="https://github.com">🐙 GitHub</button>
+          <button class="quick-link-btn" data-url="https://aistudio.google.com/app/apikey">🔑 API Key</button>
+          <button class="quick-link-btn" data-url="https://youtube.com">▶️ YouTube</button>
+          <button class="quick-link-btn" data-url="https://mail.google.com">📧 Gmail</button>
+          <button class="quick-link-btn" data-url="https://docs.google.com">📄 Docs</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMORY -->
+    <div id="tab-memory" class="tab-pane">
+      <div class="memory-header">
+        <h3>🧠 Conversation Memory</h3>
+        <button class="btn-danger" id="btn-clear-memory">Clear All</button>
+      </div>
+      <div class="memory-list" id="memory-list">
+        <div class="memory-empty">No memories yet — start chatting!</div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="tab-pane">
+
+      <div class="settings-card">
+        <h3>👤 Profile</h3>
+        <div class="profile-info">
+          <div class="profile-avatar" id="profile-avatar">K</div>
+          <div>
+            <div class="profile-name"  id="profile-name">—</div>
+            <div class="profile-email" id="profile-email">—</div>
+          </div>
+        </div>
+        <button class="btn-danger" id="btn-logout" style="width:100%">🚪 Sign Out</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>🔑 Gemini API Key</h3>
+        <div class="key-status unset" id="key-status">● No API key set — add one below</div>
+        <div class="api-key-row">
+          <input type="password" id="settings-apikey" class="form-input" placeholder="AIzaSy…">
+          <button class="btn-icon" id="btn-toggle-key" title="Show key">👁</button>
+        </div>
+        <button class="btn-secondary" id="btn-save-apikey">💾 Save API Key</button>
+        <a class="settings-link" id="get-key-link-settings">Get a free Gemini API key at AI Studio ↗</a>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.6">
+          🔒 Your key is encrypted with OS-level security (Windows DPAPI · macOS Keychain · Linux Secret Service).
+          It is never stored in plain text or sent to any server.
+        </p>
+      </div>
+
+      <div class="settings-card">
+        <h3>⚙️ Preferences</h3>
+        <div class="toggle-row">
+          <div class="toggle-label-group">
+            <div>Always on top</div>
+            <div class="toggle-desc">Keep Kazi above all other windows</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="pref-always-on-top" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label-group">
+            <div>Start with Windows</div>
+            <div class="toggle-desc">Launch automatically on login</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="pref-start-windows"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label-group">
+            <div>Save conversation memory</div>
+            <div class="toggle-desc">Persist history between sessions</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="pref-memory" checked><span class="toggle-slider"></span></label>
+        </div>
+        <button class="btn-save" id="btn-save-settings">Save Preferences</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>ℹ️ About</h3>
+        <div class="about-info">
+          <strong>Kazi Agent</strong> v2.0.0<br>
+          AI-powered desktop automation assistant<br>
+          Powered by Google Gemini 2.0 Flash<br>
+          <span class="about-badge">⚡ Electron + Python + Gemini</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-content -->
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-indicator">
+      <div class="status-dot loading" id="status-dot"></div>
+      <span id="status-text">Initialising…</span>
+    </div>
+    <span id="memory-count">0 memories</span>
+  </div>
+
+  <!-- USER DROPDOWN (absolute) -->
+  <div id="user-dropdown" class="hidden">
+    <div class="dropdown-header">
+      <div class="dropdown-user-name"  id="dd-name">—</div>
+      <div class="dropdown-user-email" id="dd-email">—</div>
+    </div>
+    <div class="dropdown-item" id="dd-settings">⚙️ Settings</div>
+    <div class="dropdown-item danger" id="dd-logout">🚪 Sign Out</div>
+  </div>
+
+</div><!-- /screen-app -->
+
+<div id="toast-container"></div>
+<script src="renderer.js"></script>
+</body>
+</html>

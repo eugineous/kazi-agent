@@ -1,0 +1,26 @@
+{
+  "appId":   "com.kazi.agent.mobile",
+  "appName": "Kazi Agent",
+  "webDir":  ".",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor":    "#0d1117",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style":           "dark",
+      "backgroundColor": "#161b22"
+    }
+  },
+  "android": {
+    "backgroundColor": "#0d1117",
+    "allowMixedContent": false,
+    "captureInput":  true,
+    "webContentsDebuggingEnabled": false
+  }
+}

@@ -1,0 +1,42 @@
+# NEVER commit API keys or secrets
+.env
+*.env.local
+*.env.production
+
+# Encrypted key store
+kazi_keys.enc
+
+# User data / session
+kazi_users.json
+kazi_memory.json
+kazi_settings.json
+kazi_session.json
+
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
