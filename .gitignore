@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+kazi-agent/node_modules/
+
+# Electron build output
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+venv/
+env/
+.env.local
+
+# Environment - NEVER commit API keys
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Build artifacts
+*.exe
+!kazi-agent/node_modules/electron/dist/electron.exe
