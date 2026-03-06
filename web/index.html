@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KAZI — AI Desktop Agent</title>
+  <meta name="description" content="KAZI is your AI-powered desktop agent. It sees your screen, controls your mouse and keyboard, and completes any task you describe in plain English." />
+  <meta property="og:title" content="KAZI — AI Desktop Agent" />
+  <meta property="og:description" content="Your AI agent that sees your screen and gets things done." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="logo">⚡ KAZI</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener" class="nav-github">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <a href="#download" class="btn-nav">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">Powered by Gemini 2.0 Flash</div>
+    <h1 class="hero-title">Your AI agent that<br/><span class="gradient-text">sees & controls</span><br/>your computer</h1>
+    <p class="hero-sub">KAZI watches your screen and executes any task you describe in plain English — clicking, typing, scrolling, opening apps — just like a human would.</p>
+    <div class="hero-cta">
+      <a href="#download" class="btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download for Windows
+      </a>
+      <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener" class="btn-secondary">View on GitHub</a>
+    </div>
+    <div class="hero-meta">Free &amp; open source · Windows 10/11 · ~5MB download</div>
+
+    <!-- App Preview -->
+    <div class="app-preview">
+      <div class="app-window">
+        <div class="app-titlebar">
+          <span class="app-logo">⚡ KAZI</span>
+          <span class="app-minimize">—</span>
+        </div>
+        <div class="app-chat">
+          <div class="chat-msg agent">Hey! I'm Kazi, your AI desktop agent. Tell me what to do! 🚀</div>
+          <div class="chat-msg user">Open Chrome and search for the latest AI news</div>
+          <div class="chat-msg agent typing">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="chat-msg agent">Opened Chrome, clicked the address bar, and searched for "latest AI news". Results are loading now ✓</div>
+        </div>
+        <div class="app-input-row">
+          <div class="app-input-fake">Tell me what to do...</div>
+          <div class="app-send">Send</div>
+        </div>
+        <div class="app-status"><span class="status-dot"></span>Ready</div>
+      </div>
+      <div class="preview-glow"></div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-label">Capabilities</div>
+      <h2 class="section-title">Everything a human assistant can do</h2>
+      <p class="section-sub">KAZI combines screen vision with computer control to execute complex, multi-step tasks autonomously.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">👁️</div>
+          <h3>Screen Vision</h3>
+          <p>Captures and analyzes your full screen in real-time to understand exactly what's on display before taking action.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖱️</div>
+          <h3>Mouse &amp; Keyboard</h3>
+          <p>Clicks, double-clicks, right-clicks, drags, types, scrolls — full computer control with pixel-precise accuracy.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3>Natural Language</h3>
+          <p>Just describe what you want done. No commands, no syntax — plain English instructions like you'd give a colleague.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔄</div>
+          <h3>Multi-Step Tasks</h3>
+          <p>Executes up to 30 sequential steps per task, adapting to what appears on screen at each step.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔔</div>
+          <h3>System Tray</h3>
+          <p>Runs quietly in the background. Press <kbd>Ctrl+Shift+K</kbd> anytime to summon KAZI instantly.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Failsafe Mode</h3>
+          <p>Move your mouse to any screen corner to instantly abort any running task. You're always in control.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how" id="how">
+    <div class="container">
+      <div class="section-label">How it works</div>
+      <h2 class="section-title">Three steps to anything</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>You describe the task</h3>
+            <p>Type any instruction in plain English — "Open Spotify and play my workout playlist" or "Find the best price for this laptop on Amazon".</p>
+          </div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>KAZI sees your screen</h3>
+            <p>Gemini 2.0 Flash analyzes a screenshot, identifies every UI element, and plans the exact sequence of actions needed.</p>
+          </div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>It gets done</h3>
+            <p>KAZI executes each action, checks the result, and continues until the task is complete — just like a human would.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXAMPLES -->
+  <section class="examples">
+    <div class="container">
+      <div class="section-label">Example commands</div>
+      <h2 class="section-title">What can you ask KAZI?</h2>
+      <div class="examples-grid">
+        <div class="example-chip">"Open Chrome and go to twitter.com"</div>
+        <div class="example-chip">"Search for flights to Nairobi next week"</div>
+        <div class="example-chip">"Take a screenshot and save it to Desktop"</div>
+        <div class="example-chip">"Open VS Code and create a new Python file"</div>
+        <div class="example-chip">"Copy the text from this PDF"</div>
+        <div class="example-chip">"Send an email to my boss saying I'll be late"</div>
+        <div class="example-chip">"Download that YouTube video"</div>
+        <div class="example-chip">"Find all files named report.pdf on my computer"</div>
+        <div class="example-chip">"Resize this image to 800x600"</div>
+        <div class="example-chip">"Open Spotify and skip to the next song"</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOWNLOAD -->
+  <section class="download" id="download">
+    <div class="container">
+      <div class="download-card">
+        <div class="download-icon">⚡</div>
+        <h2>Download KAZI</h2>
+        <p>Free, open source, and runs entirely on your machine. Your Gemini API key is the only requirement.</p>
+        <div class="download-options">
+          <a href="https://github.com/eugineous/kazi-agent/archive/refs/heads/master.zip" class="btn-primary btn-large">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download ZIP (Windows)
+          </a>
+          <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener" class="btn-outline">
+            View Source on GitHub
+          </a>
+        </div>
+        <div class="install-steps">
+          <h3>Quick Install</h3>
+          <ol>
+            <li>Download and extract the ZIP</li>
+            <li>Double-click <code>INSTALL_AND_RUN.bat</code></li>
+            <li>It auto-installs Python + all dependencies</li>
+            <li>Add your <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Gemini API key</a> to <code>.env</code></li>
+            <li>Press <kbd>Ctrl+Shift+K</kbd> to open KAZI</li>
+          </ol>
+        </div>
+        <div class="requirements">
+          <span>Windows 10/11</span>
+          <span>·</span>
+          <span>Python 3.10+ (auto-installed)</span>
+          <span>·</span>
+          <span>Free Gemini API key</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="logo">⚡ KAZI</span>
+      <span>Built by <strong>Eugine Micah</strong> · Inspired by Vy by Vercept</span>
+      <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+
+</body>
+</html>
