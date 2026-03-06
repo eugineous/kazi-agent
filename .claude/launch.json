@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "kazi-agent (Electron)",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
-      "port": 3000
+      "name": "kazi-agent website",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "web\\serve.bat"],
+      "port": 4200,
+      "autoPort": true
     }
   ]
 }
