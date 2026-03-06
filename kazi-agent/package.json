@@ -43,11 +43,11 @@
       "createDesktopShortcut":         true,
       "createStartMenuShortcut":       true,
       "shortcutName":                  "Kazi Agent",
-      "installerIcon":                 "assets/icon.png",
-      "uninstallerIcon":               "assets/icon.png",
+      "installerIcon":                 "assets/icon.ico",
+      "uninstallerIcon":               "assets/icon.ico",
       "runAfterFinish":                true,
       "perMachine":                    false,
-      "installerHeaderIcon":           "assets/icon.png",
+      "installerHeaderIcon":           "assets/icon.ico",
       "license":                       "LICENSE.txt"
     },
 
