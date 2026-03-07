@@ -1,7 +1,7 @@
 {
   "name": "kazi-agent",
-  "version": "2.0.0",
-  "description": "Kazi — AI Desktop Agent with embedded browser, memory & secure accounts",
+  "version": "3.0.0",
+  "description": "Kazi — AI Desktop Agent with token-based cloud backend, M-Pesa payments, workflows & admin",
   "main": "src/main.js",
   "scripts": {
     "start":       "electron .",
@@ -15,23 +15,20 @@
     "appId":       "com.kazi.agent",
     "productName": "Kazi Agent",
     "copyright":   "© 2025 Kazi Agent",
-    "directories": { "output": "dist" },
-
+    "directories": { "output": "dist-electron" },
     "files": [
       "src/**/*",
       "assets/**/*",
       "!assets/logo.svg",
       "!**/*.map"
     ],
-
     "extraResources": [
       {
-        "from":   "python",
-        "to":     "python",
-        "filter": ["**/*.py", "requirements.txt"]
+        "from":   "resources/screen_agent.exe",
+        "to":     "agent/screen_agent.exe",
+        "filter": ["screen_agent.exe"]
       }
     ],
-
     "win": {
       "target":        [{ "target": "nsis", "arch": ["x64"] }],
       "icon":          "assets/icon.png",
@@ -50,34 +47,28 @@
       "installerHeaderIcon":           "assets/icon.ico",
       "license":                       "LICENSE.txt"
     },
-
     "mac": {
       "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
       "icon":   "assets/icon.png",
       "category": "public.app-category.productivity"
     },
-    "dmg": {
-      "title": "Kazi Agent ${version}"
-    },
-
+    "dmg": { "title": "Kazi Agent ${version}" },
     "linux": {
       "target": ["AppImage", "deb"],
       "icon":   "assets/icon.png",
       "category": "Utility"
     }
   },
-
-  "keywords": ["ai", "agent", "desktop", "automation", "gemini", "productivity"],
+  "keywords": ["ai", "agent", "desktop", "automation", "gemini", "productivity", "mpesa"],
   "author":   "Kazi Agent",
   "license":  "MIT",
-
   "devDependencies": {
     "electron":         "^28.0.0",
     "electron-builder": "^24.9.1"
   },
-
   "dependencies": {
     "dotenv":     "^16.3.1",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "ws":         "^8.18.0"
   }
 }

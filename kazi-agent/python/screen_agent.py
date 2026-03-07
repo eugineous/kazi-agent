@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-KAZI AGENT v2.0 — AI Desktop Agent
-Screen control + vision processing via Google Gemini 2.0 Flash
-API key is passed securely via environment variable (set by main.js, encrypted at rest).
+KAZI AGENT v3.0 — AI Desktop Agent
+No API key required by the user. All AI calls go through the Kazi backend,
+which holds the Gemini key, tracks token usage, and enforces plan limits.
 """
 
 import os
@@ -10,14 +10,13 @@ import sys
 import json
 import time
 import base64
-import re
-import pyautogui
-import mss
-import mss.tools
+import requests
 from io  import BytesIO
 from PIL import Image
+import pyautogui
+import mss
 
-# ── Windows UTF-8 fix ────────────────────────────────────────────────────────
+# ── Windows UTF-8 fix ─────────────────────────────────────────
 if sys.platform == 'win32':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -25,37 +24,42 @@ if sys.platform == 'win32':
     except Exception:
         pass
 
-# ── API key — injected by main.js via environment, NEVER hardcoded ───────────
-import google.generativeai as genai
+# ── Config — injected by main.js via environment ──────────────
+BACKEND_URL    = os.getenv('KAZI_BACKEND_URL', 'https://api.kaziagent.com').rstrip('/')
+SESSION_TOKEN  = os.getenv('KAZI_SESSION_TOKEN', '')
 
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
-if not GEMINI_API_KEY:
-    print("ERROR: No Gemini API key provided. Add one in Settings.", flush=True)
+if not SESSION_TOKEN:
+    print('ERROR: Not signed in. Please sign in to use Kazi.', flush=True)
     sys.exit(1)
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash')
+HEADERS = {
+    'Authorization': f'Bearer {SESSION_TOKEN}',
+    'Content-Type':  'application/json',
+}
 
-# ── PyAutoGUI safety ─────────────────────────────────────────────────────────
+# ── PyAutoGUI safety ──────────────────────────────────────────
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE    = 0.25
-
 SCREEN_W, SCREEN_H = pyautogui.size()
 
-# ── Conversation history (in-process, enriched by context from main.js) ──────
+# ── Conversation history ──────────────────────────────────────
 conversation_history = []
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
 def capture_screen() -> Image.Image:
     with mss.mss() as sct:
-        mon = sct.monitors[1]
+        mon  = sct.monitors[1]
         shot = sct.grab(mon)
         return Image.frombytes('RGB', shot.size, shot.bgra, 'raw', 'BGRX')
 
 
 def image_to_b64(img: Image.Image) -> str:
     buf = BytesIO()
+    # Resize to max 1280px wide to keep payload small
+    if img.width > 1280:
+        ratio = 1280 / img.width
+        img = img.resize((1280, int(img.height * ratio)), Image.LANCZOS)
     img.save(buf, format='PNG', optimize=True)
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
@@ -64,62 +68,39 @@ def get_cursor() -> tuple:
     return pyautogui.position()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """You are KAZI, an advanced AI desktop agent. You see the user's screen and control their computer to complete tasks.
-
-SCREEN: {w}x{h}  |  Cursor: ({cx},{cy})
-USER COMMAND: {cmd}
-{ctx}
-
-Respond with ONLY a JSON object — no markdown, no explanation.
-
-Actions available:
-  {{"action":"click",        "x":N, "y":N, "button":"left|right", "description":"…"}}
-  {{"action":"double_click", "x":N, "y":N, "description":"…"}}
-  {{"action":"right_click",  "x":N, "y":N, "description":"…"}}
-  {{"action":"type",         "text":"…",   "description":"…"}}
-  {{"action":"hotkey",       "keys":["ctrl","c"], "description":"…"}}
-  {{"action":"key",          "key":"enter",  "description":"…"}}
-  {{"action":"scroll",       "direction":"up|down", "amount":3, "x":N, "y":N, "description":"…"}}
-  {{"action":"move",         "x":N, "y":N, "description":"…"}}
-  {{"action":"drag",         "start_x":N,"start_y":N,"end_x":N,"end_y":N,"description":"…"}}
-  {{"action":"wait",         "seconds":N, "description":"…"}}
-  {{"action":"done",         "message":"…", "summary":"…"}}
-  {{"action":"error",        "message":"…", "suggestion":"…"}}
-  {{"action":"ask",          "question":"…"}}
-
-Rules:
-1. Be PRECISE with coordinates — click exact centres of buttons/links.
-2. Break complex tasks into ONE action at a time.
-3. After clicking a text field, use "type" to fill it.
-4. Use "done" once the task is fully complete.
-5. Use "ask" only when the instruction is genuinely ambiguous.
-6. Never read, transmit, or expose sensitive user data from the screen.
-"""
-
-
+# ─────────────────────────────────────────────────────────────
 def analyze_screen(command: str, screenshot: Image.Image, step_context: str = '') -> dict:
+    """Send screenshot + command to backend; backend calls Gemini and deducts token."""
     cx, cy = get_cursor()
-    prompt = SYSTEM_PROMPT.format(
-        w=SCREEN_W, h=SCREEN_H, cx=cx, cy=cy,
-        cmd=command,
-        ctx=f'\nPREVIOUS STEPS:\n{step_context}' if step_context else ''
-    )
     try:
-        response = model.generate_content([
-            prompt,
-            {'mime_type': 'image/png', 'data': image_to_b64(screenshot)}
-        ])
-        text = response.text.strip()
-        # Strip markdown fences if present
-        m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
-        if m:
-            text = m.group(1).strip()
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return {'action': 'error', 'message': 'AI returned unparseable response', 'suggestion': 'Try rephrasing'}
+        resp = requests.post(
+            f'{BACKEND_URL}/agent/analyze',
+            headers=HEADERS,
+            json={
+                'command':       command,
+                'screenshot_b64': image_to_b64(screenshot),
+                'context':       step_context,
+                'screen_w':      SCREEN_W,
+                'screen_h':      SCREEN_H,
+                'cursor_x':      cx,
+                'cursor_y':      cy,
+            },
+            timeout=30
+        )
+        if resp.status_code == 402:
+            data = resp.json()
+            return {'action': 'error', 'message': f'Out of tokens (balance: {data.get("balance", 0)}). Top up at kaziagent.com'}
+        if resp.status_code == 401:
+            return {'action': 'error', 'message': 'Session expired. Please sign in again.'}
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get('action') and data or data.get('action_data', data)
+    except requests.exceptions.ConnectionError:
+        return {'action': 'error', 'message': 'Cannot reach Kazi server. Check your internet connection.'}
+    except requests.exceptions.Timeout:
+        return {'action': 'error', 'message': 'Server took too long to respond. Try again.'}
     except Exception as e:
-        return {'action': 'error', 'message': f'AI error: {str(e)}', 'suggestion': 'Check internet connection'}
+        return {'action': 'error', 'message': f'Network error: {str(e)}'}
 
 
 def execute_action(action_data: dict) -> str:
@@ -176,14 +157,16 @@ def execute_action(action_data: dict) -> str:
             return f'Moved to ({x},{y}): {desc}'
 
         elif action == 'drag':
-            sx, sy = int(action_data['start_x']), int(action_data['start_y'])
-            ex, ey = int(action_data['end_x']),   int(action_data['end_y'])
+            sx = int(action_data.get('start_x', action_data.get('x1', 0)))
+            sy = int(action_data.get('start_y', action_data.get('y1', 0)))
+            ex = int(action_data.get('end_x',   action_data.get('x2', 0)))
+            ey = int(action_data.get('end_y',   action_data.get('y2', 0)))
             pyautogui.moveTo(sx, sy)
             pyautogui.drag(ex - sx, ey - sy, duration=0.3)
             return f'Dragged ({sx},{sy})→({ex},{ey}): {desc}'
 
         elif action == 'wait':
-            s = action_data.get('seconds', 1)
+            s = float(action_data.get('seconds', 1))
             time.sleep(s)
             return f'Waited {s}s: {desc}'
 
@@ -206,13 +189,8 @@ def execute_action(action_data: dict) -> str:
         return f'[ERROR] Action failed: {str(e)}'
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-def extract_command(raw: str) -> tuple[str, str]:
-    """
-    Separate context injected by main.js from the actual command.
-    Format: [CONTEXT:\n...\n]\nCOMMAND: <actual command>
-    Returns (actual_command, context_text)
-    """
+# ─────────────────────────────────────────────────────────────
+def extract_command(raw: str) -> tuple:
     if raw.startswith('[CONTEXT:'):
         idx = raw.find(']\nCOMMAND: ')
         if idx != -1:
@@ -228,16 +206,15 @@ def process_command(raw_input: str) -> str:
     command, extra_context = extract_command(raw_input)
     conversation_history.append({'role': 'user', 'content': command})
 
-    max_steps  = 30
-    step_hist  = []
+    max_steps = 30
+    step_hist = []
 
     for step in range(1, max_steps + 1):
         screenshot = capture_screen()
 
-        # Build step context
         parts = []
         if extra_context:
-            parts.append(f'[Memory context provided by UI:\n{extra_context}]')
+            parts.append(f'[Context:\n{extra_context}]')
         if step_hist:
             parts.append('Steps so far:\n' + '\n'.join(f'{i+1}. {s}' for i, s in enumerate(step_hist[-5:])))
             parts.append(f'Now on step {step} — continue or mark done if complete.')
@@ -247,8 +224,7 @@ def process_command(raw_input: str) -> str:
         result      = execute_action(action_data)
         step_hist.append(result)
 
-        terminal = action_data.get('action') in ('done', 'error', 'ask')
-        if terminal:
+        if action_data.get('action') in ('done', 'error', 'ask'):
             conversation_history.append({'role': 'assistant', 'content': result})
             return result
 
@@ -257,9 +233,20 @@ def process_command(raw_input: str) -> str:
     return '[ERROR] Task exceeded maximum steps. Try breaking it into smaller commands.'
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
 def main():
-    print('Kazi Agent ready!', flush=True)
+    # Verify session is valid before starting
+    try:
+        r = requests.get(f'{BACKEND_URL}/auth/me', headers=HEADERS, timeout=10)
+        if r.status_code != 200:
+            print('ERROR: Session invalid. Please sign in again.', flush=True)
+            sys.exit(1)
+        user = r.json().get('user', {})
+        balance = user.get('tokens_balance', 0)
+        print(f'Kazi Agent ready! Tokens: {balance}', flush=True)
+    except requests.exceptions.ConnectionError:
+        print('ERROR: Cannot connect to Kazi server. Check your internet.', flush=True)
+        sys.exit(1)
 
     while True:
         try:
