@@ -1,6 +1,7 @@
 /**
- * KAZI AGENT v2.1 — Renderer Process
+ * KAZI AGENT v4.1 — Renderer Process
  * Handles all UI logic: auth, OAuth, chat, browser, memory, settings, window controls
+ * Features: dark/light mode, command palette (Ctrl+K), keyboard shortcuts, session history
  */
 
 'use strict';
@@ -173,8 +174,14 @@ window.kazi.oauth.onResult((data) => {
     toast(`Welcome, ${(data.user.name || 'there').split(' ')[0]}! ⚡`, 'success');
   } else {
     const errEl = document.querySelector('.auth-form.active .auth-err');
-    if (errEl) errEl.textContent = data.error || 'Sign-in failed.';
-    toast(data.error || 'OAuth sign-in failed', 'error');
+    // Map technical errors to user-friendly messages
+    let errMsg = data.error || 'Sign-in failed. Please try again.';
+    if (errMsg.includes('redirect_uri')) errMsg = 'OAuth redirect error. Please try again.';
+    else if (errMsg.includes('bad_verification_code') || errMsg.includes('code')) errMsg = 'Auth code expired. Please try signing in again.';
+    else if (errMsg.includes('access_denied')) errMsg = 'Sign-in was cancelled.';
+    else if (errMsg.includes('not_allowed') || errMsg.includes('test')) errMsg = 'This Google account is not on the allowed list. Contact support.';
+    if (errEl) errEl.textContent = errMsg;
+    toast(errMsg, 'error', 5000);
   }
 });
 
