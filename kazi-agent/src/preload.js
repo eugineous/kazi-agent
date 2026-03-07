@@ -105,4 +105,5 @@ contextBridge.exposeInMainWorld('kazi', {
   onNavigate:       (fn) => ipcRenderer.on('navigate',        (_, r) => fn(r)),
   onSessionRestore: (fn) => ipcRenderer.on('session:restore', (_, u) => fn(u)),
   openExternal:     (u)  => ipcRenderer.invoke('app:openExternal', u),
+  getVersion:       ()   => ipcRenderer.invoke('app:version'),
 });

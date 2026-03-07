@@ -805,6 +805,7 @@ ipcMain.on('window:pip',         () => togglePiP());
 ipcMain.on('window:fullscreen',  () => mainWindow.setFullScreen(!mainWindow.isFullScreen()));
 ipcMain.on('window:alwaystop',   (_, v) => mainWindow.setAlwaysOnTop(v));
 ipcMain.handle('app:openExternal',   async (_, u) => { await shell.openExternal(u); return { success: true }; });
+ipcMain.handle('app:version',        async ()    => app.getVersion());
 ipcMain.handle('window:isMaximized', async () => mainWindow.isMaximized());
 
 // ─────────────────────────────────────────────────────────────────────────────

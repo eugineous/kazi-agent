@@ -372,9 +372,10 @@ function switchTab(name) {
     if (browserActive) { window.kazi.browser.hide(); browserActive = false; }
   }
 
-  if (name === 'memory')   loadMemoryUI();
-  if (name === 'settings') loadSettingsUI();
-  if (name === 'history')  loadHistoryUI();
+  if (name === 'memory')    loadMemoryUI();
+  if (name === 'settings')  loadSettingsUI();
+  if (name === 'history')   loadHistoryUI();
+  if (name === 'workflows') loadWorkflowsUI();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1052,6 +1053,192 @@ document.addEventListener('keydown', e => {
     if (cmdVisible) closeCmdPalette();
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WORKFLOWS
+// ─────────────────────────────────────────────────────────────────────────────
+let _workflows        = [];
+let _editingWorkflowId = null;
+
+function renderWorkflowList() {
+  const list = $('#workflow-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!_workflows.length) {
+    list.innerHTML = '<div class="wf-empty">No workflows yet.<br>Create a scheduled automation to run tasks automatically.</div>';
+    return;
+  }
+  _workflows.forEach(wf => {
+    const el = document.createElement('div');
+    el.className = 'wf-item';
+    el.innerHTML = `
+      <div class="wf-item-info">
+        <div class="wf-item-name">${escapeHtml(wf.name)}</div>
+        <div class="wf-item-meta">
+          <span class="wf-cron-badge">${escapeHtml(wf.cron_expression || wf.cron || '—')}</span>
+          <span class="wf-status-badge ${wf.enabled !== false ? 'active' : 'paused'}">${wf.enabled !== false ? 'active' : 'paused'}</span>
+        </div>
+        <div class="wf-item-cmd">${escapeHtml((wf.command || '').slice(0, 80))}${(wf.command || '').length > 80 ? '…' : ''}</div>
+      </div>
+      <div class="wf-item-actions">
+        <button class="wf-btn-edit"  data-id="${wf.id}">✏️</button>
+        <button class="wf-btn-del"   data-id="${wf.id}">🗑️</button>
+      </div>`;
+    el.querySelector('.wf-btn-edit').addEventListener('click', () => openWorkflowModal(wf));
+    el.querySelector('.wf-btn-del').addEventListener('click', () => deleteWorkflow(wf.id));
+    list.appendChild(el);
+  });
+}
+
+async function loadWorkflowsUI() {
+  if (!window.kazi.workflows) return;
+  const res = await window.kazi.workflows.list();
+  _workflows = res.success ? (res.workflows || []) : [];
+  renderWorkflowList();
+}
+
+function openWorkflowModal(wf = null) {
+  _editingWorkflowId = wf ? wf.id : null;
+  const title = $('#wf-modal-title');
+  const nameEl = $('#wf-name');
+  const cmdEl  = $('#wf-command');
+  const cronEl = $('#wf-cron');
+  if (title) title.textContent = wf ? 'Edit Workflow' : 'New Workflow';
+  if (nameEl) nameEl.value = wf ? (wf.name || '') : '';
+  if (cmdEl)  cmdEl.value  = wf ? (wf.command || '') : '';
+  if (cronEl) cronEl.value = wf ? (wf.cron_expression || wf.cron || '') : '';
+  show($('#modal-workflow'));
+}
+
+async function deleteWorkflow(id) {
+  if (!confirm('Delete this workflow?')) return;
+  const res = await window.kazi.workflows.delete(id);
+  if (res.success) {
+    _workflows = _workflows.filter(w => w.id !== id);
+    renderWorkflowList();
+    toast('Workflow deleted', 'info');
+  } else {
+    toast('Failed to delete workflow', 'error');
+  }
+}
+
+// Open modal
+$('#btn-new-workflow')?.addEventListener('click', () => openWorkflowModal());
+$('#close-workflow')?.addEventListener('click', () => hide($('#modal-workflow')));
+
+// Cron presets
+document.querySelectorAll('.cron-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const cronEl = $('#wf-cron');
+    if (cronEl) cronEl.value = btn.dataset.cron;
+  });
+});
+
+// Save workflow
+$('#btn-save-workflow')?.addEventListener('click', async () => {
+  const name    = ($('#wf-name') || {}).value?.trim();
+  const command = ($('#wf-command') || {}).value?.trim();
+  const cron    = ($('#wf-cron') || {}).value?.trim();
+  if (!name)    { toast('Workflow name is required', 'error'); return; }
+  if (!command) { toast('Command is required', 'error'); return; }
+  if (!cron)    { toast('Schedule (cron) is required', 'error'); return; }
+
+  const payload = { name, command, cron_expression: cron, enabled: true };
+  let res;
+  if (_editingWorkflowId) {
+    res = await window.kazi.workflows.update({ id: _editingWorkflowId, ...payload });
+    if (res.success) {
+      const idx = _workflows.findIndex(w => w.id === _editingWorkflowId);
+      if (idx !== -1) _workflows[idx] = { ..._workflows[idx], ...payload };
+    }
+  } else {
+    res = await window.kazi.workflows.create(payload);
+    if (res.success && res.workflow) _workflows.push(res.workflow);
+  }
+
+  if (res.success) {
+    hide($('#modal-workflow'));
+    renderWorkflowList();
+    toast(_editingWorkflowId ? 'Workflow updated ✓' : 'Workflow created ✓', 'success');
+    _editingWorkflowId = null;
+  } else {
+    toast(res.error || 'Failed to save workflow', 'error');
+  }
+});
+
+// Load workflows when switching to that tab
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  if (btn.dataset.tab === 'workflows') {
+    btn.addEventListener('click', loadWorkflowsUI);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTO-UPDATE UI
+// ─────────────────────────────────────────────────────────────────────────────
+(function initAutoUpdateUI() {
+  if (!window.kazi.update) return;
+
+  // Show banner when update is available
+  window.kazi.update.onAvailable(({ version }) => {
+    const banner = $('#update-banner');
+    const txt    = $('#update-banner-text');
+    if (txt)    txt.textContent = `🆕 v${version} available!`;
+    if (banner) { banner.classList.remove('hidden'); }
+    toast(`Update v${version} available — check Settings`, 'info', 5000);
+  });
+
+  // Show download progress
+  window.kazi.update.onProgress((pct) => {
+    const wrap = $('#update-progress-wrap');
+    const fill = $('#upd-prog-fill');
+    const lbl  = $('#upd-prog-label');
+    if (wrap) wrap.classList.remove('hidden');
+    if (fill) fill.style.width = `${pct}%`;
+    if (lbl)  lbl.textContent  = `Downloading… ${pct}%`;
+  });
+
+  // Show install button when ready
+  window.kazi.update.onReady(() => {
+    const wrap = $('#update-progress-wrap');
+    const btn  = $('#btn-update-download');
+    if (wrap) wrap.classList.add('hidden');
+    if (btn)  { btn.textContent = '🔄 Restart & Install'; btn.dataset.state = 'ready'; }
+    toast('Update ready! Restart to install.', 'success', 6000);
+  });
+
+  // Download / Install button
+  $('#btn-update-download')?.addEventListener('click', async () => {
+    const btn = $('#btn-update-download');
+    if (btn?.dataset.state === 'ready') {
+      await window.kazi.update.install();
+    } else {
+      btn.textContent = 'Downloading…';
+      btn.disabled = true;
+      await window.kazi.update.download();
+    }
+  });
+
+  // Check for updates button
+  $('#btn-check-update')?.addEventListener('click', async () => {
+    const btn = $('#btn-check-update');
+    btn.textContent = '🔄 Checking…';
+    btn.disabled = true;
+    await window.kazi.update.check();
+    setTimeout(() => { btn.textContent = '🔄 Check for Updates'; btn.disabled = false; }, 3000);
+  });
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DYNAMIC VERSION — populate About section
+// ─────────────────────────────────────────────────────────────────────────────
+(async function loadAppVersion() {
+  try {
+    const v = await window.kazi.getVersion();
+    const el = $('#about-version');
+    if (el && v) el.textContent = `v${v}`;
+  } catch (_) {}
+})();
 
 // Helper: switch tab by name
 function switchTab(name) {
