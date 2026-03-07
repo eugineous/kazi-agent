@@ -7,6 +7,12 @@
       "runtimeArgs": ["/c", "web\\serve.bat"],
       "port": 4200,
       "autoPort": true
+    },
+    {
+      "name": "kazi-backend",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "cd backend && npm install --prefer-offline 2>nul & node src/index.js"],
+      "port": 3001
     }
   ]
 }

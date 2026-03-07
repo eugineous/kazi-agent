@@ -1,5 +1,5 @@
 /**
- * KAZI AGENT — Preload (IPC bridge)
+ * KAZI AGENT v3.0 — Preload (IPC bridge)
  * Exposes safe APIs to renderer via contextBridge
  */
 'use strict';
@@ -8,7 +8,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('kazi', {
 
-  // ── Auth (email/password) ────────────────────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────────────────────
   auth: {
     signup:  (d) => ipcRenderer.invoke('auth:signup', d),
     login:   (d) => ipcRenderer.invoke('auth:login',  d),
@@ -26,9 +26,25 @@ contextBridge.exposeInMainWorld('kazi', {
 
   // ── Agent ────────────────────────────────────────────────────────────────
   agent: {
-    sendCommand: (cmd) => ipcRenderer.send('send-command', cmd),
-    onResponse:  (fn)  => ipcRenderer.on('agent-response', (_, r) => fn(r)),
-    onStatus:    (fn)  => ipcRenderer.on('agent-status',   (_, s) => fn(s)),
+    sendCommand:    (cmd) => ipcRenderer.send('send-command', cmd),
+    onResponse:     (fn)  => ipcRenderer.on('agent-response', (_, r) => fn(r)),
+    onStatus:       (fn)  => ipcRenderer.on('agent-status',   (_, s) => fn(s)),
+    balance:        ()    => ipcRenderer.invoke('agent:balance'),
+    onTokensUpdate: (fn)  => ipcRenderer.on('tokens:update',  (_, b) => fn(b)),
+  },
+
+  // ── Payments (M-Pesa) ────────────────────────────────────────────────────
+  payments: {
+    initiate: (d) => ipcRenderer.invoke('payments:initiate', d),
+    history:  ()  => ipcRenderer.invoke('payments:history'),
+  },
+
+  // ── Workflows ────────────────────────────────────────────────────────────
+  workflows: {
+    list:   ()    => ipcRenderer.invoke('workflows:list'),
+    create: (d)   => ipcRenderer.invoke('workflows:create', d),
+    update: (d)   => ipcRenderer.invoke('workflows:update', d),
+    delete: (id)  => ipcRenderer.invoke('workflows:delete', id),
   },
 
   // ── Embedded browser ────────────────────────────────────────────────────
@@ -50,10 +66,8 @@ contextBridge.exposeInMainWorld('kazi', {
 
   // ── Settings ────────────────────────────────────────────────────────────
   settings: {
-    get:        ()  => ipcRenderer.invoke('settings:get'),
-    save:       (s) => ipcRenderer.invoke('settings:save', s),
-    saveApiKey: (k) => ipcRenderer.invoke('settings:saveApiKey', k),
-    hasApiKey:  ()  => ipcRenderer.invoke('settings:hasApiKey'),
+    get:  ()  => ipcRenderer.invoke('settings:get'),
+    save: (s) => ipcRenderer.invoke('settings:save', s),
   },
 
   // ── Window controls ─────────────────────────────────────────────────────
