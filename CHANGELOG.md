@@ -4,6 +4,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [4.2.0] — 2026-03-08
+
+### Added
+- **Tray: 🆕 New Chat** — Right-click system tray → "New Chat" instantly opens the app and starts a fresh session
+- **Auto-updater IPC bridge** — `window.kazi.update.{check,download,install,onAvailable,onProgress,onReady}`
+  exposes auto-updater events to the renderer process for in-app update notifications
+- **Navigate 'new-chat' route** — `window.kazi.onNavigate('new-chat')` now properly calls `startNewSession()`
+  before switching to the chat tab (mirrors Ctrl+N shortcut)
+- **6 MCPs configured** for Claude Code AI-assisted development:
+  - **Context7** — Pulls live, up-to-date library docs directly into Claude's context (no hallucinated APIs)
+  - **GitHub MCP** — Claude reads issues, PRs, and repo directly (say "implement issue #42")
+  - **Git MCP** — Claude handles commits, branches, diffs without leaving the session
+  - **Playwright MCP** — Claude runs and tests UI in a real browser, sees what breaks, fixes it
+  - **Figma MCP** — Claude reads Figma designs and implements them (design→code gap eliminated)
+  - **Sentry MCP** — Claude pulls real errors from Sentry with full context and resolves them
+- **CI/CD Workflows** (GitHub Actions):
+  - `backend-ci.yml` — Runs backend tests on every PR
+  - `frontend-ci.yml` — Runs Electron app build validation
+  - `deploy-backend.yml` — Auto-triggers Render redeploy on `backend/**` changes
+  - `release.yml` — Auto-creates GitHub releases with changelogs
+- **World-class landing page** — Complete overhaul at https://kazi-agent.vercel.app
+  - Hero section with animated gradient, feature grid, download CTA
+  - Social proof section, pricing tiers, FAQ
+- **Chat quality improvements** (from frontend agent):
+  - Copy button on agent messages (hover → clipboard icon → "Copied!" toast)
+  - Markdown rendering in agent bubbles (bold, italic, code, lists, headers, code blocks)
+  - Export conversation as `.md` file (date-stamped)
+  - History tab search with live filtering and match highlighting
+  - Character count shown below input when content is present
+  - Send button auto-disabled when input is empty or agent is not ready
+- **Backend: Zod input validation** on all auth endpoints (login, signup, OAuth)
+- **Backend: `/metrics` endpoint** — uptime, request count, memory usage, Node version
+- **Backend: export endpoint** — `GET /agent/history/export` (paginated, auth-gated)
+- **Structured JSON error logging** — All backend errors log `{level,ts,method,path,status,message}`
+- **`.env.example` files** — For both root and backend to guide new contributors
+
+### Fixed
+- **GitHub OAuth** — `redirect_uri` now correctly passed in the token exchange request
+- **Token field normalization** — Backend returns `token`, frontend now checks both `token` and `jwt`
+
+---
+
 ## [4.1.0] — 2026-03-07
 
 ### Added
