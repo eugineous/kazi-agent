@@ -16,6 +16,7 @@
     "productName": "Kazi Agent",
     "copyright":   "© 2025 Kazi Agent",
     "directories": { "output": "dist-electron" },
+    "publish": [{ "provider": "github", "owner": "eugineous", "repo": "kazi-agent" }],
     "files": [
       "src/**/*",
       "assets/**/*",
@@ -67,8 +68,9 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "dotenv":     "^16.3.1",
-    "node-fetch": "^3.3.2",
-    "ws":         "^8.18.0"
+    "dotenv":            "^16.3.1",
+    "electron-updater":  "^6.3.9",
+    "node-fetch":        "^3.3.2",
+    "ws":                "^8.18.0"
   }
 }

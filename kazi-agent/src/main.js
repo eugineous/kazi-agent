@@ -7,7 +7,7 @@
 
 const {
   app, BrowserWindow, BrowserView, Tray, Menu,
-  ipcMain, globalShortcut, safeStorage, shell
+  ipcMain, globalShortcut, safeStorage, shell, dialog, Notification
 } = require('electron');
 const path   = require('path');
 const { spawn } = require('child_process');
@@ -15,6 +15,51 @@ const fs     = require('fs');
 const crypto = require('crypto');
 const http   = require('http');
 const url    = require('url');
+
+// ── Auto-updater (electron-updater via GitHub Releases) ───────
+let autoUpdater = null;
+try {
+  const eu = require('electron-updater');
+  autoUpdater = eu.autoUpdater;
+  autoUpdater.autoDownload    = false;   // ask user first
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.logger = null;             // silence verbose logs
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update:available', { version: info.version });
+    // Also show native notification
+    if (Notification.isSupported()) {
+      new Notification({
+        title: `Kazi Agent ${info.version} available`,
+        body:  'Click to download and install the update automatically.',
+        icon:  path.join(__dirname, '../assets/icon.png')
+      }).show();
+    }
+  });
+
+  autoUpdater.on('download-progress', (p) => {
+    mainWindow?.webContents.send('update:progress', Math.round(p.percent));
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow?.webContents.send('update:ready');
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Ready',
+      message: 'A new version of Kazi Agent has been downloaded.\nRestart to install it now?',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall();
+    });
+  });
+
+  autoUpdater.on('error', (e) => {
+    console.error('[Updater]', e.message);
+  });
+} catch (_) {
+  // electron-updater not available in dev
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -715,6 +760,11 @@ ipcMain.handle('window:isMaximized', async () => mainWindow.isMaximized());
 // ─────────────────────────────────────────────────────────────────────────────
 // APP LIFECYCLE
 // ─────────────────────────────────────────────────────────────────────────────
+// IPC — UPDATE
+ipcMain.handle('update:check',   async () => { try { autoUpdater?.checkForUpdates(); } catch(_){} return { success: true }; });
+ipcMain.handle('update:download',async () => { try { autoUpdater?.downloadUpdate();  } catch(_){} return { success: true }; });
+ipcMain.handle('update:install', async () => { try { autoUpdater?.quitAndInstall();  } catch(_){} return { success: true }; });
+
 app.whenReady().then(async () => {
   ensureDataDir();
   createWindow();
@@ -724,6 +774,11 @@ app.whenReady().then(async () => {
   globalShortcut.register('CommandOrControl+Shift+K', () => {
     mainWindow.isVisible() ? mainWindow.hide() : (mainWindow.show(), mainWindow.focus());
   });
+
+  // Check for updates 5 seconds after launch (production only)
+  if (app.isPackaged && autoUpdater) {
+    setTimeout(() => { try { autoUpdater.checkForUpdates(); } catch(_){} }, 5000);
+  }
 
   const session = loadSession();
   if (session?.id) {
