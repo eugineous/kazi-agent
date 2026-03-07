@@ -12,6 +12,177 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── Pricing ───────────────────────────────────────── */
+    .pricing { padding: 80px 0; background: var(--bg, #070a0f); }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      margin-top: 48px;
+    }
+    .price-card {
+      background: var(--surface, #0d1117);
+      border: 1px solid var(--border, #1e2430);
+      border-radius: 16px;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: relative;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .price-card:hover { border-color: rgba(0,217,255,0.3); transform: translateY(-2px); }
+    .price-card.featured {
+      border-color: rgba(0,217,255,0.5);
+      background: linear-gradient(160deg, #0a1a2e 0%, #0d1117 100%);
+    }
+    .price-badge {
+      position: absolute;
+      top: -12px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(90deg, #00d9ff, #7c3aed);
+      color: #000;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+    }
+    .price-tier {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .price-tier.t-free  { color: #3fb950; }
+    .price-tier.t-basic { color: #00d9ff; }
+    .price-tier.t-pro   { color: #a78bfa; }
+    .price-amount {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .price-num {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1;
+      color: #e2e8f0;
+    }
+    .price-cur {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .price-period {
+      font-size: 13px;
+      color: #64748b;
+    }
+    .price-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+    .price-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+    .price-features li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #cbd5e1;
+    }
+    .price-features li .pf-icon {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: rgba(63,185,80,0.15);
+      color: #3fb950;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 9px;
+    }
+    .price-features li.muted { color: #475569; }
+    .price-features li.muted .pf-icon { background: rgba(71,85,105,0.15); color: #475569; }
+    .price-cta {
+      display: block;
+      text-align: center;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .price-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+    .price-cta.free-cta  { background: rgba(63,185,80,0.12);  border: 1px solid rgba(63,185,80,0.3);  color: #3fb950; }
+    .price-cta.basic-cta { background: rgba(0,217,255,0.1);   border: 1px solid rgba(0,217,255,0.3);  color: #00d9ff; }
+    .price-cta.pro-cta   { background: linear-gradient(90deg, #00d9ff, #7c3aed); border: none; color: #000; }
+
+    /* ── Beta CTA ──────────────────────────────────────── */
+    .beta-strip {
+      background: linear-gradient(90deg, rgba(0,217,255,0.07), rgba(124,58,237,0.07));
+      border-top: 1px solid rgba(0,217,255,0.12);
+      border-bottom: 1px solid rgba(124,58,237,0.12);
+      padding: 28px 0;
+    }
+    .beta-inner {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .beta-text h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+    .beta-text p { font-size: 13px; color: #64748b; }
+    .beta-form {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .beta-form input {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 10px 14px;
+      outline: none;
+      width: 220px;
+      transition: border-color 0.15s;
+    }
+    .beta-form input:focus { border-color: rgba(0,217,255,0.4); }
+    .beta-form input::placeholder { color: #475569; }
+    .beta-form button {
+      background: linear-gradient(90deg, #00d9ff, #7c3aed);
+      border: none;
+      border-radius: 8px;
+      color: #000;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 18px;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .beta-form button:hover { opacity: 0.85; }
+  </style>
 </head>
 <body>
 
@@ -27,11 +198,12 @@
       <div class="nav-links">
         <a href="#features">Features</a>
         <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
         <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener" class="nav-github">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
           GitHub
         </a>
-        <a href="#download" class="btn-nav">Download</a>
+        <a href="#download" class="btn-nav">Download Free</a>
       </div>
     </div>
   </nav>
@@ -43,28 +215,27 @@
       <div class="hero-text">
         <div class="hero-badge">
           <span class="badge-dot"></span>
-          Powered by Gemini 2.0 Flash
+          v2.0 Beta · OAuth · Memory · PiP
         </div>
         <h1 class="hero-title">
           Your AI agent that<br/>
           <span class="gradient-text">sees &amp; controls</span><br/>
           your computer
         </h1>
-        <p class="hero-sub">KAZI watches your screen and executes any task you describe in plain English — clicking, typing, scrolling, opening apps — just like a human would.</p>
+        <p class="hero-sub">KAZI watches your screen and executes any task you describe in plain English — clicking, typing, scrolling, opening apps — just like a human assistant.</p>
         <div class="hero-cta">
           <a href="#download" class="btn-primary">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download for Windows
           </a>
-          <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener" class="btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-            View on GitHub
+          <a href="#pricing" class="btn-secondary">
+            View Pricing
           </a>
         </div>
         <div class="hero-meta">
           <span>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            Free &amp; open source
+            Free tier available
           </span>
           <span>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
@@ -72,7 +243,7 @@
           </span>
           <span>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            ~5MB download
+            Runs 100% locally
           </span>
         </div>
       </div>
@@ -128,8 +299,8 @@
       </div>
       <div class="stat-divider"></div>
       <div class="stat">
-        <span class="stat-value">Free</span>
-        <span class="stat-label">Open source</span>
+        <span class="stat-value">v2.0</span>
+        <span class="stat-label">Beta access</span>
       </div>
     </div>
   </section>
@@ -139,7 +310,7 @@
     <div class="container">
       <div class="section-eyebrow">Capabilities</div>
       <h2 class="section-title">Everything a human assistant can do</h2>
-      <p class="section-sub">KAZI combines screen vision with computer control to execute complex, multi-step tasks autonomously.</p>
+      <p class="section-sub">KAZI combines screen vision with computer control to execute complex, multi-step tasks autonomously — with memory, authentication, and a built-in browser.</p>
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon-wrap icon-cyan">
@@ -167,21 +338,21 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
           </div>
           <h3>Multi-Step Tasks</h3>
-          <p>Executes up to 30 sequential steps per task, adapting to what appears on screen at each step.</p>
+          <p>Executes up to 30 sequential steps per task, adapting to what appears on screen at each step automatically.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon-wrap icon-green">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
           </div>
-          <h3>System Tray</h3>
-          <p>Runs quietly in the background. Press <kbd>Ctrl+Shift+K</kbd> anytime to summon KAZI instantly.</p>
+          <h3>Persistent Memory</h3>
+          <p>Remembers your preferences, past tasks, and context across sessions — gets smarter the more you use it.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon-wrap icon-red">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           </div>
-          <h3>Failsafe Mode</h3>
-          <p>Move your mouse to any screen corner to instantly abort any running task. You're always in control.</p>
+          <h3>Picture-in-Picture</h3>
+          <p>Pop out a compact always-on-top window. Keep Kazi visible while you work in any app on any screen.</p>
         </div>
       </div>
     </div>
@@ -226,7 +397,7 @@
             </div>
             <div>
               <h3>It gets done</h3>
-              <p>KAZI executes each action, checks the result, and continues until the task is complete — just like a human would.</p>
+              <p>KAZI executes each action, checks the result, and continues until the task is complete — just like a human assistant would.</p>
             </div>
           </div>
         </div>
@@ -254,6 +425,97 @@
     </div>
   </section>
 
+  <!-- BETA WAITLIST STRIP -->
+  <div class="beta-strip" id="beta">
+    <div class="beta-inner">
+      <div class="beta-text">
+        <h3>⚡ Join the v2.0 Beta</h3>
+        <p>Get early access, priority support, and a free Pro trial month.</p>
+      </div>
+      <form class="beta-form" onsubmit="handleBetaForm(event)">
+        <input type="email" id="beta-email" placeholder="your@email.com" required />
+        <button type="submit">Request Access</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- PRICING -->
+  <section class="pricing" id="pricing">
+    <div class="container">
+      <div class="section-eyebrow">Pricing</div>
+      <h2 class="section-title">Start free, scale as you grow</h2>
+      <p class="section-sub">All plans include the full KAZI desktop app. Upgrade for more tasks, devices, and team features.</p>
+      <div class="pricing-grid">
+
+        <!-- Free -->
+        <div class="price-card">
+          <div class="price-tier t-free">Starter</div>
+          <div class="price-amount">
+            <span class="price-num">Free</span>
+          </div>
+          <p class="price-desc">Perfect for personal use and trying out KAZI.</p>
+          <ul class="price-features">
+            <li><span class="pf-icon">✓</span> 300 tokens/day</li>
+            <li><span class="pf-icon">✓</span> Screen vision &amp; control</li>
+            <li><span class="pf-icon">✓</span> Natural language tasks</li>
+            <li><span class="pf-icon">✓</span> System tray &amp; hotkey</li>
+            <li><span class="pf-icon">✓</span> Bring your own API key</li>
+            <li class="muted"><span class="pf-icon">–</span> Persistent memory</li>
+            <li class="muted"><span class="pf-icon">–</span> Picture-in-Picture</li>
+            <li class="muted"><span class="pf-icon">–</span> Multi-device sync</li>
+          </ul>
+          <a href="#download" class="price-cta free-cta">Download Free</a>
+        </div>
+
+        <!-- Basic -->
+        <div class="price-card featured">
+          <div class="price-badge">Most Popular</div>
+          <div class="price-tier t-basic">Basic</div>
+          <div class="price-amount">
+            <span class="price-cur">KES</span>
+            <span class="price-num">500</span>
+            <span class="price-period">/month</span>
+          </div>
+          <p class="price-desc">For professionals who want KAZI working all day, every day.</p>
+          <ul class="price-features">
+            <li><span class="pf-icon">✓</span> Unlimited tasks</li>
+            <li><span class="pf-icon">✓</span> Screen vision &amp; control</li>
+            <li><span class="pf-icon">✓</span> Persistent memory</li>
+            <li><span class="pf-icon">✓</span> Picture-in-Picture mode</li>
+            <li><span class="pf-icon">✓</span> Embedded browser</li>
+            <li><span class="pf-icon">✓</span> OAuth sign-in (GitHub / Google)</li>
+            <li><span class="pf-icon">✓</span> 3 devices</li>
+            <li class="muted"><span class="pf-icon">–</span> Team &amp; admin features</li>
+          </ul>
+          <a href="mailto:kazi@roylandzm.com?subject=Basic Plan" class="price-cta basic-cta">Get Basic</a>
+        </div>
+
+        <!-- Pro -->
+        <div class="price-card">
+          <div class="price-tier t-pro">Pro</div>
+          <div class="price-amount">
+            <span class="price-cur">KES</span>
+            <span class="price-num">1,000</span>
+            <span class="price-period">/month</span>
+          </div>
+          <p class="price-desc">For teams and power users who need automation at scale.</p>
+          <ul class="price-features">
+            <li><span class="pf-icon">✓</span> Everything in Basic</li>
+            <li><span class="pf-icon">✓</span> Unlimited devices</li>
+            <li><span class="pf-icon">✓</span> Team workspace &amp; roles</li>
+            <li><span class="pf-icon">✓</span> Workflow automations</li>
+            <li><span class="pf-icon">✓</span> Admin dashboard</li>
+            <li><span class="pf-icon">✓</span> Priority support</li>
+            <li><span class="pf-icon">✓</span> Early access to new features</li>
+            <li><span class="pf-icon">✓</span> Usage analytics</li>
+          </ul>
+          <a href="mailto:kazi@roylandzm.com?subject=Pro Plan" class="price-cta pro-cta">Get Pro</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <!-- DOWNLOAD -->
   <section class="download" id="download">
     <div class="container">
@@ -262,12 +524,12 @@
         <div class="download-content">
           <div class="download-left">
             <div class="section-eyebrow">Download</div>
-            <h2>Get started with KAZI</h2>
-            <p>Free, open source, and runs entirely on your machine. Your Gemini API key is the only requirement.</p>
+            <h2>Get started in 60 seconds</h2>
+            <p>Install KAZI v2.0, sign in with Google or GitHub, enter your Gemini API key, and start automating.</p>
             <div class="download-options">
-              <a href="https://github.com/eugineous/kazi-agent/archive/refs/tags/v1.0.0.zip" class="btn-primary btn-large">
+              <a href="https://github.com/eugineous/kazi-agent/releases/latest" target="_blank" rel="noopener" class="btn-primary btn-large">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Download ZIP (Windows)
+                Download KAZI v2.0 (Windows)
               </a>
               <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener" class="btn-outline">
                 View Source on GitHub
@@ -275,7 +537,7 @@
             </div>
             <div class="requirements">
               <span class="req-badge">Windows 10/11</span>
-              <span class="req-badge">Python 3.10+ (auto-installed)</span>
+              <span class="req-badge">Python 3.10+</span>
               <span class="req-badge">Free Gemini API key</span>
             </div>
           </div>
@@ -283,14 +545,14 @@
             <div class="install-steps">
               <div class="install-header">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-                Quick Install
+                Quick Setup
               </div>
               <ol>
-                <li><span class="step-num-sm">1</span> Download and extract the ZIP</li>
-                <li><span class="step-num-sm">2</span> Double-click <code>INSTALL_AND_RUN.bat</code></li>
-                <li><span class="step-num-sm">3</span> Python + dependencies auto-install</li>
-                <li><span class="step-num-sm">4</span> Add your <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Gemini API key</a> to <code>.env</code></li>
-                <li><span class="step-num-sm">5</span> Press <kbd>Ctrl+Shift+K</kbd> to launch KAZI</li>
+                <li><span class="step-num-sm">1</span> Download and run <code>INSTALL_AND_RUN.bat</code></li>
+                <li><span class="step-num-sm">2</span> Python + dependencies auto-install</li>
+                <li><span class="step-num-sm">3</span> Sign in with Google or GitHub</li>
+                <li><span class="step-num-sm">4</span> Enter your <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">free Gemini API key</a></li>
+                <li><span class="step-num-sm">5</span> Press <kbd>Ctrl+Shift+K</kbd> anytime to use KAZI</li>
               </ol>
             </div>
           </div>
@@ -303,13 +565,26 @@
   <footer class="footer">
     <div class="container footer-inner">
       <span class="logo"><span class="logo-icon">⚡</span> KAZI</span>
-      <span>Built by <strong>Eugine Micah</strong> · Inspired by Vy by Vercept</span>
+      <span style="color:#475569;font-size:13px;">© 2025 KAZI Agent · <a href="mailto:kazi@roylandzm.com" style="color:#64748b;text-decoration:none;">kazi@roylandzm.com</a></span>
       <a href="https://github.com/eugineous/kazi-agent" target="_blank" rel="noopener">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
         GitHub
       </a>
     </div>
   </footer>
+
+  <script>
+    function handleBetaForm(e) {
+      e.preventDefault();
+      const email = document.getElementById('beta-email').value;
+      const btn = e.target.querySelector('button');
+      btn.textContent = '✓ You\'re on the list!';
+      btn.style.background = '#3fb950';
+      btn.disabled = true;
+      // In production: POST to your backend
+      console.log('Beta signup:', email);
+    }
+  </script>
 
 </body>
 </html>

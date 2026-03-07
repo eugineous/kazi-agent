@@ -1,63 +1,78 @@
 /**
- * KAZI AGENT v2.0 — Preload / Context Bridge
- * Safely exposes IPC channels to the renderer process.
+ * KAZI AGENT — Preload (IPC bridge)
+ * Exposes safe APIs to renderer via contextBridge
  */
+'use strict';
 
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('kazi', {
 
-  // ── AUTH ──────────────────────────────────────────────────────────────────
+  // ── Auth (email/password) ────────────────────────────────────────────────
   auth: {
-    signup:  (data)            => ipcRenderer.invoke('auth:signup',  data),
-    login:   (data)            => ipcRenderer.invoke('auth:login',   data),
-    logout:  ()                => ipcRenderer.invoke('auth:logout'),
-    getUser: ()                => ipcRenderer.invoke('auth:getUser'),
+    signup:  (d) => ipcRenderer.invoke('auth:signup', d),
+    login:   (d) => ipcRenderer.invoke('auth:login',  d),
+    logout:  ()  => ipcRenderer.invoke('auth:logout'),
+    getUser: ()  => ipcRenderer.invoke('auth:getUser'),
   },
 
-  // ── AGENT ─────────────────────────────────────────────────────────────────
+  // ── OAuth (GitHub / Google) ──────────────────────────────────────────────
+  oauth: {
+    github:    ()  => ipcRenderer.invoke('oauth:github'),
+    google:    ()  => ipcRenderer.invoke('oauth:google'),
+    saveCreds: (c) => ipcRenderer.invoke('oauth:saveCreds', c),
+    onResult:  (fn)=> ipcRenderer.on('oauth:result', (_, data) => fn(data)),
+  },
+
+  // ── Agent ────────────────────────────────────────────────────────────────
   agent: {
-    sendCommand: (cmd)         => ipcRenderer.send('send-command',    cmd),
-    onResponse:  (cb)          => ipcRenderer.on('agent-response',   (_, d) => cb(d)),
-    onStatus:    (cb)          => ipcRenderer.on('agent-status',     (_, d) => cb(d)),
+    sendCommand: (cmd) => ipcRenderer.send('send-command', cmd),
+    onResponse:  (fn)  => ipcRenderer.on('agent-response', (_, r) => fn(r)),
+    onStatus:    (fn)  => ipcRenderer.on('agent-status',   (_, s) => fn(s)),
   },
 
-  // ── BROWSER ───────────────────────────────────────────────────────────────
+  // ── Embedded browser ────────────────────────────────────────────────────
   browser: {
-    navigate: (url)            => ipcRenderer.invoke('browser:navigate', url),
-    hide:     ()               => ipcRenderer.invoke('browser:hide'),
-    back:     ()               => ipcRenderer.invoke('browser:back'),
-    forward:  ()               => ipcRenderer.invoke('browser:forward'),
-    reload:   ()               => ipcRenderer.invoke('browser:reload'),
-    onTitle:  (cb)             => ipcRenderer.on('browser:title',    (_, d) => cb(d)),
-    onUrl:    (cb)             => ipcRenderer.on('browser:url',      (_, d) => cb(d)),
+    navigate: (u)  => ipcRenderer.invoke('browser:navigate', u),
+    hide:     ()   => ipcRenderer.invoke('browser:hide'),
+    back:     ()   => ipcRenderer.invoke('browser:back'),
+    forward:  ()   => ipcRenderer.invoke('browser:forward'),
+    reload:   ()   => ipcRenderer.invoke('browser:reload'),
+    onTitle:  (fn) => ipcRenderer.on('browser:title', (_, t) => fn(t)),
+    onUrl:    (fn) => ipcRenderer.on('browser:url',   (_, u) => fn(u)),
   },
 
-  // ── MEMORY ────────────────────────────────────────────────────────────────
+  // ── Memory ──────────────────────────────────────────────────────────────
   memory: {
-    get:   ()                  => ipcRenderer.invoke('memory:get'),
-    clear: ()                  => ipcRenderer.invoke('memory:clear'),
+    get:   () => ipcRenderer.invoke('memory:get'),
+    clear: () => ipcRenderer.invoke('memory:clear'),
   },
 
-  // ── SETTINGS ──────────────────────────────────────────────────────────────
+  // ── Settings ────────────────────────────────────────────────────────────
   settings: {
-    get:          ()           => ipcRenderer.invoke('settings:get'),
-    save:         (s)          => ipcRenderer.invoke('settings:save',      s),
-    saveApiKey:   (k)          => ipcRenderer.invoke('settings:saveApiKey',k),
-    hasApiKey:    ()           => ipcRenderer.invoke('settings:hasApiKey'),
+    get:        ()  => ipcRenderer.invoke('settings:get'),
+    save:       (s) => ipcRenderer.invoke('settings:save', s),
+    saveApiKey: (k) => ipcRenderer.invoke('settings:saveApiKey', k),
+    hasApiKey:  ()  => ipcRenderer.invoke('settings:hasApiKey'),
   },
 
-  // ── WINDOW CONTROLS ───────────────────────────────────────────────────────
+  // ── Window controls ─────────────────────────────────────────────────────
   window: {
-    minimize: ()               => ipcRenderer.send('window:minimize'),
-    maximize: ()               => ipcRenderer.send('window:maximize'),
-    close:    ()               => ipcRenderer.send('window:close'),
+    minimize:    () => ipcRenderer.send('window:minimize'),
+    maximize:    () => ipcRenderer.send('window:maximize'),
+    close:       () => ipcRenderer.send('window:close'),
+    show:        () => ipcRenderer.send('window:show'),
+    quit:        () => ipcRenderer.send('window:quit'),
+    pip:         () => ipcRenderer.send('window:pip'),
+    fullscreen:  () => ipcRenderer.send('window:fullscreen'),
+    alwaysTop:   (v)=> ipcRenderer.send('window:alwaystop', v),
+    isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+    onState:     (fn)=> ipcRenderer.on('window:state', (_, s) => fn(s)),
+    onPip:       (fn)=> ipcRenderer.on('pip:state',    (_, s) => fn(s)),
   },
 
-  // ── NAVIGATION EVENTS (from main → renderer) ──────────────────────────────
-  onNavigate:       (cb)       => ipcRenderer.on('navigate',         (_, d) => cb(d)),
-  onSessionRestore: (cb)       => ipcRenderer.on('session:restore',  (_, d) => cb(d)),
-
-  // ── EXTERNAL LINKS ────────────────────────────────────────────────────────
-  openExternal: (url)          => ipcRenderer.invoke('app:openExternal', url),
+  // ── App-level ────────────────────────────────────────────────────────────
+  onNavigate:       (fn) => ipcRenderer.on('navigate',        (_, r) => fn(r)),
+  onSessionRestore: (fn) => ipcRenderer.on('session:restore', (_, u) => fn(u)),
+  openExternal:     (u)  => ipcRenderer.invoke('app:openExternal', u),
 });
