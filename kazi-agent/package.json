@@ -1,7 +1,7 @@
 {
   "name": "kazi-agent",
-  "version": "3.0.0",
-  "description": "Kazi — AI Desktop Agent with token-based cloud backend, M-Pesa payments, workflows & admin",
+  "version": "4.0.0",
+  "description": "Kazi — AI Desktop Agent v4.0 with OAuth login, session history, multi-AI models, Chrome-like UI",
   "main": "src/main.js",
   "scripts": {
     "start":       "electron .",
@@ -22,13 +22,6 @@
       "assets/**/*",
       "!assets/logo.svg",
       "!**/*.map"
-    ],
-    "extraResources": [
-      {
-        "from":   "resources/screen_agent.exe",
-        "to":     "agent/screen_agent.exe",
-        "filter": ["screen_agent.exe"]
-      }
     ],
     "win": {
       "target":        [{ "target": "nsis", "arch": ["x64"] }],
