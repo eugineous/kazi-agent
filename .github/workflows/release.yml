@@ -1,0 +1,38 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Kazi Agent ${{ steps.version.outputs.VERSION }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## Kazi Agent ${{ steps.version.outputs.VERSION }}
+
+            ### Download
+            Download the Windows installer below (Assets section).
+
+            ### Requirements
+            - Windows 10/11 x64
+            - Python 3.8+ (for AI agent features)
+
+            See [CHANGELOG.md](https://github.com/eugineous/kazi-agent/blob/master/CHANGELOG.md) for full details.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

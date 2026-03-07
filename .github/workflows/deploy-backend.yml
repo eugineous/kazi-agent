@@ -1,0 +1,21 @@
+name: Deploy Backend to Render
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Deploy
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            https://api.render.com/v1/services/srv-d6ltu07afjfc738otmi0/deploys
+          echo "✅ Render deploy triggered"

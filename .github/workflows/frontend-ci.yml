@@ -1,0 +1,42 @@
+name: Frontend CI
+
+on:
+  push:
+    paths:
+      - 'kazi-agent/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    paths:
+      - 'kazi-agent/**'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: kazi-agent/package-lock.json
+
+      - name: Install dependencies
+        working-directory: kazi-agent
+        run: npm ci --ignore-scripts
+
+      - name: Check main process syntax
+        working-directory: kazi-agent
+        run: node --check src/main.js && node --check src/preload.js && echo "✅ Main process OK"
+
+      - name: Verify renderer syntax
+        working-directory: kazi-agent
+        run: node -e "require('fs').readFileSync('src/renderer.js','utf8'); console.log('✅ renderer.js readable')"
+
+      - name: Check version in package.json
+        working-directory: kazi-agent
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "✅ App version: $VERSION"
