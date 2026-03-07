@@ -49,6 +49,35 @@ app.use('/admin',    require('./routes/admin'));
 
 app.get('/health', (_, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
+// ── Metrics / uptime endpoint ─────────────────────────────────
+const _startTime = Date.now();
+let _requestCount = 0;
+app.use((req, _res, next) => { _requestCount++; next(); });
+app.get('/metrics', (_, res) => res.json({
+  status: 'ok',
+  uptime_seconds: Math.floor((Date.now() - _startTime) / 1000),
+  requests_total: _requestCount,
+  memory_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+  node_version: process.version,
+  ts: new Date().toISOString()
+}));
+
+// ── Global error handler (catch unhandled route errors) ───────
+app.use((err, req, res, _next) => {
+  const status = err.status || err.statusCode || 500;
+  // Structured error log for Render/log aggregators
+  console.error(JSON.stringify({
+    level: 'error',
+    ts: new Date().toISOString(),
+    method: req.method,
+    path: req.path,
+    status,
+    message: err.message,
+    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+  }));
+  res.status(status).json({ error: err.message || 'Internal server error' });
+});
+
 // ── WebSocket (for workflow push notifications) ────────────────
 const clients = new Map();  // userId → Set<WebSocket>
 
