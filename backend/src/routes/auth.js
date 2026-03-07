@@ -73,17 +73,23 @@ router.post('/login', async (req, res) => {
 // ── POST /auth/oauth/github ───────────────────────────────────
 router.post('/oauth/github', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, redirect_uri, redirectUri: redirectUriCamel } = req.body;
+    const redirectUri = redirect_uri || redirectUriCamel || '';
     if (!code) return res.status(400).json({ error: 'code required' });
 
-    // Exchange code for token
+    // Exchange code for token — redirect_uri MUST match what was sent in authorization request
+    const exchangeBody = { client_id: process.env.GITHUB_CLIENT_ID, client_secret: process.env.GITHUB_CLIENT_SECRET, code };
+    if (redirectUri) exchangeBody.redirect_uri = redirectUri;
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ client_id: process.env.GITHUB_CLIENT_ID, client_secret: process.env.GITHUB_CLIENT_SECRET, code })
+      body: JSON.stringify(exchangeBody)
     });
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) return res.status(400).json({ error: 'GitHub token exchange failed' });
+    if (!tokenData.access_token) {
+      console.error('[GitHub OAuth] token exchange failed:', JSON.stringify(tokenData));
+      return res.status(400).json({ error: tokenData.error_description || tokenData.error || 'GitHub token exchange failed' });
+    }
 
     const [userRes, emailRes] = await Promise.all([
       fetch('https://api.github.com/user',       { headers: { Authorization: `Bearer ${tokenData.access_token}` } }),
@@ -131,7 +137,10 @@ router.post('/oauth/google', async (req, res) => {
       body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: redirectUri || '', grant_type: 'authorization_code' })
     });
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) return res.status(400).json({ error: 'Google token exchange failed' });
+    if (!tokenData.access_token) {
+      console.error('[Google OAuth] token exchange failed:', JSON.stringify(tokenData));
+      return res.status(400).json({ error: tokenData.error_description || tokenData.error || 'Google token exchange failed' });
+    }
 
     const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${tokenData.access_token}` } });
     const gUser   = await userRes.json();
