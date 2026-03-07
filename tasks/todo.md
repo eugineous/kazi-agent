@@ -1,7 +1,7 @@
 # Kazi Agent — Task Tracker
 
 > Updated: 2026-03-08
-> Current Version: v4.2.0
+> Current Version: v4.3.0
 
 ---
 
@@ -38,14 +38,24 @@
 
 ---
 
-## 📋 Next Up (v4.3.0)
+## ✅ Completed (v4.3.0 — 2026-03-08)
 
-- [ ] Tray "New Chat" — clear conversation + focus window from system tray
-- [ ] Command palette (Ctrl+K) — search commands, navigate tabs, run workflows
-- [ ] Session history UI — list past sessions, click to restore
-- [ ] Multi-AI model selector — swap between Gemini, GPT-4, Claude in settings
-- [ ] Workflow scheduler — run cron jobs from within the app (not just define them)
-- [ ] Onboarding wizard — first-run setup (API key, Python path, model choice)
+- [x] Fix startNewSession() — clears chat DOM, memory, input, focuses textarea
+- [x] Onboarding wizard — 3-step first-run modal (Welcome → Choose AI → All Set)
+- [x] Gemini API key (BYOK) — Settings card with password field + show/hide toggle
+- [x] Persist AI model selection — saved to settings.aiModel, restored on load
+- [x] Theme toggle in Settings — light/dark switch persisted in settings
+- [x] DEFAULT_SETTINGS — added aiModel + geminiApiKey fields to main.js
+- [x] Python agent spawn uses user's Gemini API key when set
+
+## 📋 Next Up (v4.4.0)
+
+- [ ] Workflow scheduler — actually run cron jobs (node-cron in main.js), not just define
+- [ ] Session restore — clicking history card loads actual messages into chat
+- [ ] Export chat — as Markdown or PDF from the Export button
+- [ ] M-Pesa payment flow — complete the buy tokens UI end-to-end
+- [ ] Notification center — aggregate agent events, workflow runs, update alerts
+- [ ] App auto-launch on Windows startup (startWithWindows already wired in main.js)
 
 ---
 
