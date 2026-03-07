@@ -427,6 +427,52 @@
     /* ═══ LOADING SKELETON ═══ */
     .skeleton { background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:6px; }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* ═══ ONBOARDING WIZARD ═══ */
+    #onboarding-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.75);
+      z-index:10000; display:flex; align-items:center; justify-content:center;
+    }
+    #onboarding-box {
+      width:480px; max-width:92vw; background:var(--bg2);
+      border:1px solid var(--border); border-radius:16px;
+      box-shadow:0 24px 80px rgba(0,0,0,.7); overflow:hidden;
+    }
+    .ob-header {
+      padding:28px 28px 0; text-align:center;
+    }
+    .ob-logo { font-size:42px; margin-bottom:8px; }
+    .ob-title { font-size:20px; font-weight:800; color:var(--text); margin-bottom:6px; }
+    .ob-sub   { font-size:13px; color:var(--muted); line-height:1.6; }
+    .ob-body  { padding:22px 28px; }
+    .ob-steps { display:flex; justify-content:center; gap:6px; margin-bottom:20px; }
+    .ob-step-dot { width:7px; height:7px; border-radius:50%; background:var(--border); transition:background .2s; }
+    .ob-step-dot.active { background:var(--cyan); }
+    .ob-step-dot.done   { background:var(--ok); }
+    .ob-panel { display:none; }
+    .ob-panel.active { display:block; }
+    .ob-model-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+    .ob-model-card {
+      padding:12px; background:var(--bg3); border:1.5px solid var(--border);
+      border-radius:10px; cursor:pointer; text-align:center; transition:border-color .15s,background .15s;
+    }
+    .ob-model-card:hover { border-color:var(--cyan-brd); background:var(--bg4); }
+    .ob-model-card.selected { border-color:var(--cyan); background:var(--cyan-dim); }
+    .ob-model-card .omc-icon { font-size:22px; margin-bottom:4px; }
+    .ob-model-card .omc-name { font-size:12px; font-weight:600; }
+    .ob-model-card .omc-desc { font-size:10px; color:var(--muted); margin-top:2px; }
+    .ob-feature-list { list-style:none; margin:0; padding:0; }
+    .ob-feature-list li { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+    .ob-feature-list li:last-child { border-bottom:none; }
+    .ob-feature-list li span.ico { font-size:18px; width:26px; text-align:center; flex-shrink:0; }
+    .ob-footer { display:flex; align-items:center; justify-content:space-between; padding:16px 28px; border-top:1px solid var(--border); background:var(--bg3); }
+    .ob-btn-skip { background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; }
+    .ob-btn-skip:hover { color:var(--text); }
+    .ob-btn-next { padding:9px 26px; background:linear-gradient(135deg,#00b4d8,#0077ff); border:none; border-radius:var(--rs); color:#fff; font-size:13px; font-weight:700; cursor:pointer; transition:opacity .2s; }
+    .ob-btn-next:hover { opacity:.88; }
+    .ob-finish-icon { font-size:56px; text-align:center; margin:10px 0 16px; }
+    .ob-finish-title { font-size:17px; font-weight:800; text-align:center; margin-bottom:8px; }
+    .ob-finish-sub   { font-size:13px; color:var(--muted); text-align:center; line-height:1.6; }
   </style>
 </head>
 <body>
@@ -715,7 +761,24 @@
           <div><div>Save conversation memory</div><div class="tr-desc">Persist history between sessions</div></div>
           <label class="tog"><input type="checkbox" id="pref-memory" checked><span class="tog-sl"></span></label>
         </div>
+        <div class="tr">
+          <div><div>Light mode</div><div class="tr-desc">Switch between dark and light theme</div></div>
+          <label class="tog"><input type="checkbox" id="pref-theme"><span class="tog-sl"></span></label>
+        </div>
         <button class="btn-save" id="btn-save-settings">Save Preferences</button>
+      </div>
+
+      <div class="scard">
+        <h3>🤖 AI Configuration</h3>
+        <div class="tr" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <div><div>Gemini API Key</div><div class="tr-desc">Your own key for local Gemini agent (optional)</div></div>
+          <div style="display:flex;gap:6px;width:100%">
+            <input type="password" id="pref-gemini-key" placeholder="AIza…" autocomplete="off"
+              style="flex:1;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:12px;outline:none">
+            <button id="btn-toggle-key" style="padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--muted);font-size:11px;cursor:pointer" title="Show/hide key">👁</button>
+          </div>
+          <div style="font-size:10px;color:var(--dim)">Leave empty to use the shared Kazi backend key.</div>
+        </div>
       </div>
 
       <div class="scard">
@@ -837,5 +900,90 @@
 </div>
 
 <script src="renderer.js"></script>
+
+<!-- ═══ ONBOARDING WIZARD ═══ -->
+<div id="onboarding-overlay" class="hidden">
+  <div id="onboarding-box">
+
+    <!-- Step dots -->
+    <div class="ob-header">
+      <div class="ob-steps">
+        <div class="ob-step-dot active" id="ob-dot-0"></div>
+        <div class="ob-step-dot"        id="ob-dot-1"></div>
+        <div class="ob-step-dot"        id="ob-dot-2"></div>
+      </div>
+    </div>
+
+    <!-- Step 0: Welcome -->
+    <div class="ob-panel active" id="ob-panel-0">
+      <div class="ob-header" style="padding-top:12px">
+        <div class="ob-logo">⚡</div>
+        <div class="ob-title">Welcome to Kazi Agent</div>
+        <div class="ob-sub">Your AI-powered desktop assistant for Africa and beyond.<br>Let's get you set up in 30 seconds.</div>
+      </div>
+      <div class="ob-body">
+        <ul class="ob-feature-list">
+          <li><span class="ico">🤖</span><span>Chat with AI — Gemini, ChatGPT, Claude, and more</span></li>
+          <li><span class="ico">⚙</span><span>Automate workflows with scheduled tasks</span></li>
+          <li><span class="ico">🌐</span><span>Built-in browser — browse without leaving the app</span></li>
+          <li><span class="ico">🧠</span><span>Persistent memory — Kazi remembers your context</span></li>
+          <li><span class="ico">⚡</span><span>M-Pesa payments — buy AI tokens with mobile money</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Step 1: Choose AI Model -->
+    <div class="ob-panel" id="ob-panel-1">
+      <div class="ob-header" style="padding-top:12px">
+        <div class="ob-title">Choose your AI</div>
+        <div class="ob-sub">Pick your primary model. You can switch anytime from the chat bar.</div>
+      </div>
+      <div class="ob-body">
+        <div class="ob-model-grid">
+          <div class="ob-model-card selected" data-model="gemini-flash">
+            <div class="omc-icon">⚡</div>
+            <div class="omc-name">Gemini Flash</div>
+            <div class="omc-desc">Fast · Free credits</div>
+          </div>
+          <div class="ob-model-card" data-model="gemini-pro">
+            <div class="omc-icon">🔮</div>
+            <div class="omc-name">Gemini Pro</div>
+            <div class="omc-desc">Powerful · Complex tasks</div>
+          </div>
+          <div class="ob-model-card" data-model="chatgpt">
+            <div class="omc-icon">💬</div>
+            <div class="omc-name">ChatGPT</div>
+            <div class="omc-desc">Opens in browser</div>
+          </div>
+          <div class="ob-model-card" data-model="claude">
+            <div class="omc-icon">🤖</div>
+            <div class="omc-name">Claude</div>
+            <div class="omc-desc">Opens in browser</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: All set -->
+    <div class="ob-panel" id="ob-panel-2">
+      <div class="ob-body" style="padding-top:28px;padding-bottom:28px">
+        <div class="ob-finish-icon">🚀</div>
+        <div class="ob-finish-title">You're all set!</div>
+        <div class="ob-finish-sub">
+          Kazi is ready to automate your workflow.<br>
+          Type a command in the chat to get started.<br><br>
+          <strong>Tip:</strong> Press <kbd style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:11px;border:1px solid var(--border)">Ctrl+K</kbd> to open the command palette anytime.
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-footer">
+      <button class="ob-btn-skip" id="ob-btn-skip">Skip</button>
+      <button class="ob-btn-next" id="ob-btn-next">Get Started →</button>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>

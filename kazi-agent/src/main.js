@@ -211,7 +211,8 @@ function clearMemory(userId) {
 const DEFAULT_SETTINGS = {
   alwaysOnTop: false, startWithWindows: false,
   hotkey: 'CommandOrControl+Shift+K', theme: 'dark',
-  memoryEnabled: true, maxMemoryMessages: 100
+  memoryEnabled: true, maxMemoryMessages: 100,
+  aiModel: 'gemini-flash', geminiApiKey: ''
 };
 function loadSettings(userId) {
   try { if (fs.existsSync(SETTINGS_FILE)) { const a = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); return Object.assign({}, DEFAULT_SETTINGS, a[userId] || {}); } } catch (_) {}
@@ -403,12 +404,17 @@ function setupAgentIO(proc, jwt) {
 function startAgent(jwt) {
   if (pythonProcess) { try { pythonProcess.kill(); } catch (_) {} pythonProcess = null; pythonReady = false; }
 
+  // Pull user's stored Gemini API key if set
+  const userSettings = currentUser ? loadSettings(currentUser.id) : {};
+  const geminiKey = userSettings.geminiApiKey || process.env.GEMINI_API_KEY || '';
+
   const env = {
     ...process.env,
     KAZI_SESSION_TOKEN: jwt,
     KAZI_BACKEND_URL:   BACKEND_URL,
     PYTHONIOENCODING:   'utf-8',
-    PYTHONUNBUFFERED:   '1'
+    PYTHONUNBUFFERED:   '1',
+    ...(geminiKey ? { GEMINI_API_KEY: geminiKey } : {})
   };
 
   // Try bundled exe first

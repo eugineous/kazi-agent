@@ -135,8 +135,11 @@ function showAppScreen(user) {
   loadSettingsUI();
   loadMemoryUI();
   initModelSelector();
-  startNewSession();
+  startNewSession(false); // false = don't clear DOM on first login
   setStatus('Agent starting…', 'loading');
+
+  // Show onboarding wizard for first-time users (deferred to ensure DOM is ready)
+  setTimeout(() => window._showOnboarding?.(), 400);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -707,13 +710,24 @@ async function loadSettingsUI() {
   const pAot   = $('#pref-aot');
   const pStart = $('#pref-startup');
   const pMem   = $('#pref-memory');
+  const pTheme = $('#pref-theme');
+  const pKey   = $('#pref-gemini-key');
   if (pAot)   pAot.checked   = !!settings.alwaysOnTop;
   if (pStart) pStart.checked = !!settings.startWithWindows;
   if (pMem)   pMem.checked   = settings.memoryEnabled !== false;
+  if (pTheme) pTheme.checked = (localStorage.getItem('kazi-theme') || settings.theme || 'dark') === 'light';
+  if (pKey)   pKey.value     = settings.geminiApiKey || '';
 
   aotActive = !!settings.alwaysOnTop;
   const aotBtn = $('#btn-aot');
   if (aotBtn) aotBtn.classList.toggle('active', aotActive);
+
+  // Restore saved AI model pill
+  const savedModel = settings.aiModel || 'gemini-flash';
+  activeModel = savedModel;
+  document.querySelectorAll('.model-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.model === savedModel);
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -729,10 +743,16 @@ let activeModel = 'gemini-flash';
 
 function initModelSelector() {
   document.querySelectorAll('.model-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       activeModel = btn.dataset.model;
       document.querySelectorAll('.model-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+
+      // Persist selected model to settings
+      try {
+        const s = await window.kazi.settings.get();
+        await window.kazi.settings.save({ ...s, aiModel: activeModel });
+      } catch (_) {}
 
       if (MODEL_URLS[activeModel]) {
         // Open web-based models in the browser tab
@@ -753,9 +773,28 @@ function initModelSelector() {
 let currentSessionId   = null;
 let currentSessionMsgs = [];
 
-function startNewSession() {
+function startNewSession(clearUI = true) {
   currentSessionId   = Date.now().toString();
   currentSessionMsgs = [];
+
+  if (clearUI) {
+    // Clear chat DOM and show fresh welcome message
+    const cc = $('#chatContainer');
+    if (cc) {
+      cc.innerHTML = `<div class="msg agent">Hey! I'm <strong>Kazi</strong> ⚡ — your AI desktop agent.<br>Tell me what to do and I'll handle it on your screen.</div>`;
+    }
+    // Clear input + reset char count
+    const inp = $('#commandInput');
+    if (inp) { inp.value = ''; inp.style.height = 'auto'; }
+    const cc2 = $('#char-count');
+    if (cc2) cc2.classList.add('hidden');
+    // Clear conversation memory (Python agent context)
+    window.kazi.memory?.clear();
+    // Switch to chat tab and focus input
+    switchTab('chat');
+    setTimeout(() => $('#commandInput')?.focus(), 80);
+    toast('New chat started ✨', 'info', 1800);
+  }
 }
 
 function recordSessionMsg(role, content) {
@@ -846,16 +885,26 @@ document.querySelector('#btn-clear-history')?.addEventListener('click', async ()
 });
 
 $('#btn-save-settings').addEventListener('click', async () => {
+  const themeLight = ($('#pref-theme') || {}).checked || false;
+  const newTheme = themeLight ? 'light' : 'dark';
+
   const settings = {
     alwaysOnTop:      ($('#pref-aot')     || {}).checked || false,
     startWithWindows: ($('#pref-startup') || {}).checked || false,
     memoryEnabled:    ($('#pref-memory')  || {}).checked !== false,
+    theme:            newTheme,
+    aiModel:          activeModel,
+    geminiApiKey:     ($('#pref-gemini-key') || {}).value?.trim() || '',
   };
+
   // Apply AOT immediately
   aotActive = settings.alwaysOnTop;
   const aotBtn = $('#btn-aot');
   if (aotBtn) aotBtn.classList.toggle('active', aotActive);
   window.kazi.window.alwaysTop(aotActive);
+
+  // Apply theme immediately
+  applyTheme(newTheme);
 
   const result = await window.kazi.settings.save(settings);
   if (result.success) toast('Preferences saved ✓', 'success');
@@ -1245,3 +1294,77 @@ function switchTab(name) {
   const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
   if (btn) btn.click();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ONBOARDING WIZARD — shown once on first login
+// ─────────────────────────────────────────────────────────────────────────────
+(function initOnboarding() {
+  const overlay = $('#onboarding-overlay');
+  if (!overlay) return;
+
+  let obStep = 0;
+  let obModel = 'gemini-flash';
+  const TOTAL_STEPS = 3;
+
+  function obSetStep(n) {
+    obStep = n;
+    // Panels
+    document.querySelectorAll('.ob-panel').forEach((p, i) => {
+      p.classList.toggle('active', i === n);
+    });
+    // Dots
+    document.querySelectorAll('.ob-step-dot').forEach((d, i) => {
+      d.classList.remove('active', 'done');
+      if (i < n)      d.classList.add('done');
+      else if (i === n) d.classList.add('active');
+    });
+    // Button label
+    const btn = $('#ob-btn-next');
+    if (btn) {
+      if (n === TOTAL_STEPS - 1) { btn.textContent = '🚀 Start Using Kazi'; }
+      else                       { btn.textContent = 'Next →'; }
+    }
+  }
+
+  function obClose() {
+    overlay.classList.add('hidden');
+    localStorage.setItem('kazi-onboarded', '1');
+    // Apply chosen model
+    const pill = document.querySelector(`.model-pill[data-model="${obModel}"]`);
+    if (pill) pill.click();
+    // Focus chat input
+    setTimeout(() => $('#commandInput')?.focus(), 100);
+  }
+
+  // Model card selection inside wizard
+  document.querySelectorAll('.ob-model-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.ob-model-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      obModel = card.dataset.model;
+    });
+  });
+
+  $('#ob-btn-next')?.addEventListener('click', () => {
+    if (obStep < TOTAL_STEPS - 1) { obSetStep(obStep + 1); }
+    else                           { obClose(); }
+  });
+
+  $('#ob-btn-skip')?.addEventListener('click', obClose);
+
+  // Expose so showAppScreen can trigger it
+  window._showOnboarding = () => {
+    if (localStorage.getItem('kazi-onboarded')) return; // already seen
+    obSetStep(0);
+    overlay.classList.remove('hidden');
+  };
+})();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETTINGS — Gemini API key show/hide toggle
+// ─────────────────────────────────────────────────────────────────────────────
+$('#btn-toggle-key')?.addEventListener('click', () => {
+  const inp = $('#pref-gemini-key');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+});

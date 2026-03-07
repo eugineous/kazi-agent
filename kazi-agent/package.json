@@ -1,7 +1,7 @@
 {
   "name": "kazi-agent",
-  "version": "4.2.0",
-  "description": "Kazi — AI Desktop Agent v4.2 with workflows, auto-update UI, tray New Chat, dark/light mode, command palette, OAuth login, session history, multi-AI models",
+  "version": "4.3.0",
+  "description": "Kazi — AI Desktop Agent v4.3 with onboarding wizard, persisted model selection, Gemini BYOK, theme toggle, fixed New Chat, settings overhaul",
   "main": "src/main.js",
   "scripts": {
     "start":       "electron .",
