@@ -133,6 +133,8 @@ function showAppScreen(user) {
 
   loadSettingsUI();
   loadMemoryUI();
+  initModelSelector();
+  startNewSession();
   setStatus('Agent starting…', 'loading');
 }
 
@@ -246,7 +248,6 @@ $('#btn-signup').addEventListener('click', async () => {
   const name     = $('#signup-name').value.trim();
   const email    = $('#signup-email').value.trim();
   const password = $('#signup-password').value;
-  const apiKey   = $('#signup-apikey').value.trim();
 
   if (!name || !email || !password) {
     $('#signup-error').textContent = 'Name, email and password are required.';
@@ -260,7 +261,7 @@ $('#btn-signup').addEventListener('click', async () => {
   $('#btn-signup').disabled    = true;
   $('#btn-signup').textContent = 'Creating account…';
 
-  const result = await window.kazi.auth.signup({ name, email, password, apiKey });
+  const result = await window.kazi.auth.signup({ name, email, password });
 
   $('#btn-signup').disabled    = false;
   $('#btn-signup').textContent = 'Create Account →';
@@ -268,22 +269,12 @@ $('#btn-signup').addEventListener('click', async () => {
   if (result.success) {
     showAppScreen(result.user);
     toast(`Account created! Welcome, ${(result.user.name || '').split(' ')[0]}! 🎉`, 'success');
-    if (!apiKey) {
-      setTimeout(() => {
-        switchTab('settings');
-        toast('Add your Gemini API key to activate the agent 🔑', 'info', 4000);
-      }, 1000);
-    }
   } else {
     $('#signup-error').textContent = result.error || 'Signup failed.';
   }
 });
 
 $('#form-signup').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-signup').click(); });
-
-$('#get-key-signup').addEventListener('click', () => {
-  window.kazi.openExternal('https://aistudio.google.com/app/apikey');
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SESSION RESTORE  (auto-login from saved session)
@@ -376,6 +367,7 @@ function switchTab(name) {
 
   if (name === 'memory')   loadMemoryUI();
   if (name === 'settings') loadSettingsUI();
+  if (name === 'history')  loadHistoryUI();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -448,6 +440,7 @@ function sendCommand() {
     return;
   }
   addMsg(cmd, 'user');
+  recordSessionMsg('user', cmd);
   addTypingIndicator();
   setStatus('Working…', 'loading');
   sendBtn.disabled   = true;
@@ -467,6 +460,7 @@ commandInput.addEventListener('input', () => autoGrow(commandInput));
 window.kazi.agent.onResponse((response) => {
   document.querySelectorAll('.typing').forEach(e => e.remove());
   addMsg(response, 'agent');
+  recordSessionMsg('agent', response);
   sendBtn.disabled = false;
   setStatus('Ready', 'ready');
   loadMemoryUI();
@@ -559,47 +553,101 @@ async function loadSettingsUI() {
   if (pStart) pStart.checked = !!settings.startWithWindows;
   if (pMem)   pMem.checked   = settings.memoryEnabled !== false;
 
-  // Sync AOT toolbar button with setting
   aotActive = !!settings.alwaysOnTop;
   const aotBtn = $('#btn-aot');
   if (aotBtn) aotBtn.classList.toggle('active', aotActive);
+}
 
-  const hasKey = await window.kazi.settings.hasApiKey();
-  const ks     = $('#key-status');
-  if (ks) {
-    ks.textContent = hasKey ? '● API key saved and encrypted ✓' : '● No API key set — add one below';
-    ks.className   = `key-status ${hasKey ? 'set' : 'unset'}`;
+// ─────────────────────────────────────────────────────────────────────────────
+// AI MODEL SELECTOR
+// ─────────────────────────────────────────────────────────────────────────────
+const MODEL_URLS = {
+  'chatgpt':    'https://chat.openai.com',
+  'claude':     'https://claude.ai',
+  'notebooklm': 'https://notebooklm.google.com',
+  'gemini-pro': 'https://gemini.google.com'
+};
+let activeModel = 'gemini-flash';
+
+function initModelSelector() {
+  document.querySelectorAll('.model-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeModel = btn.dataset.model;
+      document.querySelectorAll('.model-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (MODEL_URLS[activeModel]) {
+        // Open web-based models in the browser tab
+        switchTab('browser');
+        navigateBrowser(MODEL_URLS[activeModel]);
+        toast(`Opening ${btn.textContent.trim()} in browser ↗`, 'info', 2000);
+      } else {
+        // Gemini Flash/local — already the default agent
+        toast(`Model: ${btn.textContent.trim()} ⚡`, 'info', 1500);
+      }
+    });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SESSION HISTORY
+// ─────────────────────────────────────────────────────────────────────────────
+let currentSessionId   = null;
+let currentSessionMsgs = [];
+
+function startNewSession() {
+  currentSessionId   = Date.now().toString();
+  currentSessionMsgs = [];
+}
+
+function recordSessionMsg(role, content) {
+  if (!currentSessionId) startNewSession();
+  currentSessionMsgs.push({ role, content, ts: new Date().toISOString() });
+  if (currentSessionMsgs.length === 1 && window.kazi.history) {
+    // Save session to history on first message
+    const preview = currentSessionMsgs[0]?.content?.slice(0, 120) || '';
+    window.kazi.history.saveSession({
+      id:       currentSessionId,
+      ts:       new Date().toISOString(),
+      preview,
+      msgCount: currentSessionMsgs.length
+    });
   }
 }
 
-$('#btn-toggle-key').addEventListener('click', () => {
-  const inp = $('#settings-apikey');
-  const showing = inp.type === 'password';
-  inp.type = showing ? 'text' : 'password';
-  $('#btn-toggle-key').textContent = showing ? '🙈' : '👁';
-});
-
-$('#btn-save-apikey').addEventListener('click', async () => {
-  const key = $('#settings-apikey').value.trim();
-  if (!key) { toast('Please enter an API key', 'error'); return; }
-  if (!key.startsWith('AIza')) { toast("That doesn't look like a valid Gemini key", 'error'); return; }
-
-  $('#btn-save-apikey').textContent = 'Saving…';
-  const result = await window.kazi.settings.saveApiKey(key);
-  $('#btn-save-apikey').textContent = '💾 Save API Key';
-
-  if (result.success) {
-    $('#settings-apikey').value = '';
-    await loadSettingsUI();
-    toast('API key saved and encrypted! 🔒', 'success');
-  } else {
-    toast(result.error || 'Failed to save key', 'error');
+async function loadHistoryUI() {
+  const list = $('#history-list');
+  if (!list || !window.kazi.history) return;
+  const sessions = await window.kazi.history.get();
+  if (!sessions.length) {
+    list.innerHTML = '<div class="hist-empty">No history yet.<br>Every conversation is saved here automatically.</div>';
+    return;
   }
-});
+  list.innerHTML = '';
+  sessions.forEach(s => {
+    const d   = document.createElement('div');
+    d.className = 'hist-card';
+    const when = s.ts ? new Date(s.ts).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    d.innerHTML = `
+      <div class="hist-card-top">
+        <span class="hist-time">${when}</span>
+        <span class="hist-msgs">${s.msgCount || 1} msg${(s.msgCount || 1) !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="hist-preview">${escapeHtml((s.preview || 'Empty session').slice(0, 100))}</div>`;
+    d.addEventListener('click', () => {
+      switchTab('chat');
+      addMsg(`Resuming session from ${when}…`, 'agent');
+      toast('Session loaded — continue chatting!', 'info');
+    });
+    list.appendChild(d);
+  });
+}
 
-$('#get-key-settings').addEventListener('click', (e) => {
-  e.preventDefault();
-  window.kazi.openExternal('https://aistudio.google.com/app/apikey');
+document.querySelector('#btn-clear-history')?.addEventListener('click', async () => {
+  if (!confirm('Clear all session history?')) return;
+  const list = $('#history-list');
+  if (list) list.innerHTML = '<div class="hist-empty">History cleared.</div>';
+  toast('History cleared', 'info');
 });
 
 $('#btn-save-settings').addEventListener('click', async () => {

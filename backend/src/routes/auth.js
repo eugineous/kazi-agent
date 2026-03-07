@@ -121,7 +121,8 @@ router.post('/oauth/github', async (req, res) => {
 // ── POST /auth/oauth/google ───────────────────────────────────
 router.post('/oauth/google', async (req, res) => {
   try {
-    const { code, redirectUri } = req.body;
+    const { code, redirect_uri, redirectUri: redirectUriCamel } = req.body;
+  const redirectUri = redirect_uri || redirectUriCamel || '';
     if (!code) return res.status(400).json({ error: 'code required' });
 
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {

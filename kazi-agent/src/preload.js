@@ -64,6 +64,12 @@ contextBridge.exposeInMainWorld('kazi', {
     clear: () => ipcRenderer.invoke('memory:clear'),
   },
 
+  // ── Session History ──────────────────────────────────────────────────────
+  history: {
+    get:         ()  => ipcRenderer.invoke('history:get'),
+    saveSession: (s) => ipcRenderer.invoke('history:saveSession', s),
+  },
+
   // ── Settings ────────────────────────────────────────────────────────────
   settings: {
     get:  ()  => ipcRenderer.invoke('settings:get'),

@@ -64,7 +64,7 @@ try {
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
-const BACKEND_URL = process.env.KAZI_BACKEND_URL || 'https://api.kaziagent.com';
+const BACKEND_URL = process.env.KAZI_BACKEND_URL || 'https://kazi-backend-stzv.onrender.com';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBALS
@@ -89,6 +89,46 @@ const OAUTH_FILE    = path.join(userData, 'kazi_oauth.json');  // public client 
 
 function ensureDataDir() {
   if (!fs.existsSync(userData)) fs.mkdirSync(userData, { recursive: true });
+  // Write default OAuth client IDs (public — not secrets) so no manual config needed
+  const defaultOAuth = {
+    github_client_id: '0v23li9rm4KDV249FMs0',
+    google_client_id: '503460192245-3bja9ubr7f19rdc6107777f0c4il75u8.apps.googleusercontent.com'
+  };
+  if (!fs.existsSync(OAUTH_FILE)) {
+    fs.writeFileSync(OAUTH_FILE, JSON.stringify(defaultOAuth, null, 2));
+  } else {
+    try {
+      const existing = JSON.parse(fs.readFileSync(OAUTH_FILE, 'utf8'));
+      const merged = Object.assign({}, defaultOAuth, existing); // preserve user overrides
+      fs.writeFileSync(OAUTH_FILE, JSON.stringify(merged, null, 2));
+    } catch (_) {
+      fs.writeFileSync(OAUTH_FILE, JSON.stringify(defaultOAuth, null, 2));
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SESSION HISTORY  (separate from conversation memory — stores session list)
+// ─────────────────────────────────────────────────────────────────────────────
+const SESSION_HISTORY_FILE = path.join(userData.replace(/userData$/, ''), 'kazi_session_history.json');
+function loadSessionHistory(userId) {
+  try {
+    const file = path.join(app.getPath('userData'), 'kazi_session_history.json');
+    if (!fs.existsSync(file)) return [];
+    const all = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return (all[userId] || []).slice(-50); // keep last 50 sessions
+  } catch (_) { return []; }
+}
+function saveSessionToHistory(userId, session) {
+  try {
+    const file = path.join(app.getPath('userData'), 'kazi_session_history.json');
+    let all = {};
+    if (fs.existsSync(file)) { try { all = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) {} }
+    if (!all[userId]) all[userId] = [];
+    all[userId].unshift(session);
+    all[userId] = all[userId].slice(0, 50);
+    fs.writeFileSync(file, JSON.stringify(all, null, 2));
+  } catch (_) {}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -486,13 +526,14 @@ function startOAuthServer(onCode) {
 // POST-LOGIN HELPER
 // ─────────────────────────────────────────────────────────────────────────────
 function onLoginSuccess(data) {
-  storeJwt(data.user.id, data.jwt);
-  currentUser = { ...data.user, jwt: data.jwt };
+  const jwt = data.jwt || data.token; // backend returns 'token', normalize to 'jwt'
+  storeJwt(data.user.id, jwt);
+  currentUser = { ...data.user, jwt };
   conversationMemory = loadMemory(data.user.id);
   saveSession(currentUser);
   ipcMain.emit('tray:rebuild');
-  startAgent(data.jwt);
-  connectWebSocket(data.jwt);
+  startAgent(jwt);
+  connectWebSocket(jwt);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -549,7 +590,7 @@ ipcMain.handle('oauth:github', async () => {
           body: JSON.stringify({ code, redirect_uri: `http://127.0.0.1:${portRef}/callback` })
         });
         const data = await resp.json();
-        if (!resp.ok || !data.jwt) {
+        if (!resp.ok || (!data.jwt && !data.token)) {
           mainWindow?.webContents.send('oauth:result', { provider: 'github', success: false, error: data.error || 'OAuth failed' });
           return;
         }
@@ -585,7 +626,7 @@ ipcMain.handle('oauth:google', async () => {
           body: JSON.stringify({ code, redirect_uri: redirectUri })
         });
         const data = await resp.json();
-        if (!resp.ok || !data.jwt) {
+        if (!resp.ok || (!data.jwt && !data.token)) {
           mainWindow?.webContents.send('oauth:result', { provider: 'google', success: false, error: data.error || 'OAuth failed' });
           return;
         }
@@ -627,6 +668,11 @@ ipcMain.handle('browser:reload',   async ()     => { browserView?.webContents.re
 // ─────────────────────────────────────────────────────────────────────────────
 ipcMain.handle('memory:get',   async () => conversationMemory);
 ipcMain.handle('memory:clear', async () => { conversationMemory = []; if (currentUser) clearMemory(currentUser.id); return { success: true }; });
+ipcMain.handle('history:get',  async () => currentUser ? loadSessionHistory(currentUser.id) : []);
+ipcMain.handle('history:saveSession', async (_, session) => {
+  if (currentUser) saveSessionToHistory(currentUser.id, session);
+  return { success: true };
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IPC — SETTINGS
