@@ -91,4 +91,65 @@ router.get('/balance', requireAuth, async (req, res) => {
   return res.json({ success: true, balance: rows[0].tokens_balance, plan: rows[0].plan });
 });
 
+// ── GET /agent/export?format=markdown|json ────────────────────
+// Returns the user's recent agent usage history as Markdown or JSON.
+// Usage log is the closest equivalent to conversation history in this schema.
+router.get('/export', requireAuth, async (req, res) => {
+  try {
+    const format = (req.query.format || 'json').toLowerCase();
+    const limit  = Math.min(parseInt(req.query.limit) || 100, 500);
+
+    const { rows } = await db.query(
+      `SELECT command, action_type, tokens_used, created_at
+       FROM usage_log
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [req.user.id, limit]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No agent history found for this account.'
+      });
+    }
+
+    if (format === 'markdown') {
+      const lines = [
+        `# Kazi Agent — Conversation Export`,
+        `**User:** ${req.user.email}`,
+        `**Exported:** ${new Date().toISOString()}`,
+        `**Entries:** ${rows.length}`,
+        '',
+        '---',
+        ''
+      ];
+      rows.forEach((row, i) => {
+        const ts = new Date(row.created_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' });
+        lines.push(`## Entry ${rows.length - i}: ${ts}`);
+        lines.push(`- **Command:** ${row.command || '_(none)_'}`);
+        lines.push(`- **Action:** ${row.action_type || '_(unknown)_'}`);
+        lines.push(`- **Tokens used:** ${row.tokens_used}`);
+        lines.push('');
+      });
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="kazi-history-${req.user.id}.md"`);
+      return res.send(lines.join('\n'));
+    }
+
+    // Default: JSON
+    return res.json({
+      success: true,
+      user:    req.user.email,
+      exported_at: new Date().toISOString(),
+      count:   rows.length,
+      history: rows
+    });
+  } catch (e) {
+    console.error('/agent/export:', e);
+    return res.status(500).json({ error: 'Server error: ' + e.message });
+  }
+});
+
 module.exports = router;

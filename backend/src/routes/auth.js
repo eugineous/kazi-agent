@@ -3,10 +3,30 @@ const express  = require('express');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const { v4: uuid } = require('uuid');
+const { z }    = require('zod');
 const db       = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { validate }    = require('../middleware/validate');
 
 const router = express.Router();
+
+// ── Zod schemas ───────────────────────────────────────────────
+const signupSchema = z.object({
+  name:     z.string().min(2).max(100),
+  email:    z.string().email(),
+  password: z.string().min(8).max(100)
+});
+
+const loginSchema = z.object({
+  email:    z.string().email(),
+  password: z.string().min(1)
+});
+
+const oauthSchema = z.object({
+  code:         z.string().min(1),
+  redirect_uri: z.string().url().optional(),
+  redirectUri:  z.string().url().optional()
+});
 
 function signToken(userId) {
   return jwt.sign({ sub: userId }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '30d' });
@@ -18,7 +38,7 @@ function safeUser(u) {
 }
 
 // ── POST /auth/signup ─────────────────────────────────────────
-router.post('/signup', async (req, res) => {
+router.post('/signup', validate(signupSchema), async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: 'name, email, password required' });
@@ -46,7 +66,7 @@ router.post('/signup', async (req, res) => {
 });
 
 // ── POST /auth/login ──────────────────────────────────────────
-router.post('/login', async (req, res) => {
+router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
@@ -71,7 +91,7 @@ router.post('/login', async (req, res) => {
 });
 
 // ── POST /auth/oauth/github ───────────────────────────────────
-router.post('/oauth/github', async (req, res) => {
+router.post('/oauth/github', validate(oauthSchema), async (req, res) => {
   try {
     const { code, redirect_uri, redirectUri: redirectUriCamel } = req.body;
     const redirectUri = redirect_uri || redirectUriCamel || '';
@@ -125,7 +145,7 @@ router.post('/oauth/github', async (req, res) => {
 });
 
 // ── POST /auth/oauth/google ───────────────────────────────────
-router.post('/oauth/google', async (req, res) => {
+router.post('/oauth/google', validate(oauthSchema), async (req, res) => {
   try {
     const { code, redirect_uri, redirectUri: redirectUriCamel } = req.body;
   const redirectUri = redirect_uri || redirectUriCamel || '';

@@ -119,14 +119,34 @@ router.post('/mpesa/callback', async (req, res) => {
   }
 });
 
-// ── GET /payments/history ─────────────────────────────────────
+// ── GET /payments/history?page=1&limit=20 ────────────────────
 router.get('/history', requireAuth, async (req, res) => {
+  const page  = Math.max(1, parseInt(req.query.page)  || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
   const { rows } = await db.query(
     `SELECT id, amount_kes, tokens_added, plan, mpesa_ref, status, created_at, completed_at
-     FROM payments WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,
+     FROM payments WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+    [req.user.id, limit, offset]
+  );
+
+  const { rows: countRows } = await db.query(
+    'SELECT COUNT(*) as total FROM payments WHERE user_id=$1',
     [req.user.id]
   );
-  return res.json({ success: true, payments: rows });
+  const total = parseInt(countRows[0].total);
+
+  return res.json({
+    success:  true,
+    payments: rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      total_pages: Math.ceil(total / limit)
+    }
+  });
 });
 
 module.exports = router;
