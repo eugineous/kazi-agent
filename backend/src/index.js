@@ -22,11 +22,23 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));  // screenshots can be large
 
-// Rate limiting
+// Rate limiting — general (200 req / 15 min)
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+// Rate limiting — agent endpoints (30 req/min)
 const agentLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, message: { error: 'Too many requests' } });
+// Rate limiting — auth endpoints (20 attempts / 15 min — brute force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please wait 15 minutes before trying again.' }
+});
 app.use(limiter);
 app.use('/agent', agentLimiter);
+app.use('/auth/login',  authLimiter);
+app.use('/auth/signup', authLimiter);
+app.use('/auth/oauth',  authLimiter);
 
 // ── Routes ────────────────────────────────────────────────────
 app.use('/auth',     require('./routes/auth'));

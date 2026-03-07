@@ -705,3 +705,157 @@ $('#btn-logout').addEventListener('click', handleLogout);
     setStatus('Not signed in', 'warning');
   }
 })();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THEME TOGGLE — Dark / Light mode
+// ─────────────────────────────────────────────────────────────────────────────
+(function initTheme() {
+  const saved = localStorage.getItem('kazi-theme') || 'dark';
+  applyTheme(saved);
+})();
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+  localStorage.setItem('kazi-theme', theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+document.getElementById('btn-theme')?.addEventListener('click', toggleTheme);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMMAND PALETTE — Ctrl+K
+// ─────────────────────────────────────────────────────────────────────────────
+const CMD_COMMANDS = [
+  { icon: '💬', label: 'Go to Chat',        kbd: 'Ctrl+1',     action: () => switchTab('chat') },
+  { icon: '🌐', label: 'Go to Browser',     kbd: 'Ctrl+2',     action: () => switchTab('browser') },
+  { icon: '🕐', label: 'Go to History',     kbd: 'Ctrl+3',     action: () => switchTab('history') },
+  { icon: '⚙️', label: 'Go to Settings',    kbd: 'Ctrl+4',     action: () => switchTab('settings') },
+  { icon: '🧠', label: 'Go to Memory',      kbd: '',           action: () => switchTab('memory') },
+  { icon: '⚙',  label: 'Go to Workflows',   kbd: '',           action: () => switchTab('workflows') },
+  { icon: '☀️', label: 'Toggle Theme',       kbd: 'Ctrl+Shift+T', action: () => toggleTheme() },
+  { icon: '📌', label: 'Toggle Always on Top', kbd: '',        action: () => document.getElementById('btn-aot')?.click() },
+  { icon: '🚪', label: 'Sign Out',           kbd: '',           action: () => document.getElementById('btn-logout')?.click() },
+  { icon: '🆕', label: 'New Chat Session',   kbd: 'Ctrl+N',    action: () => { if (typeof startNewSession === 'function') startNewSession(); switchTab('chat'); } },
+  { icon: '⊡',  label: 'Picture-in-Picture', kbd: '',          action: () => document.getElementById('btn-pip')?.click() },
+];
+
+let cmdSelectedIdx = 0;
+let cmdVisible = false;
+let cmdFiltered = [...CMD_COMMANDS];
+
+function openCmdPalette() {
+  const overlay = document.getElementById('cmd-palette-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  cmdVisible = true;
+  cmdSelectedIdx = 0;
+  renderCmdResults('');
+  setTimeout(() => document.getElementById('cmd-input')?.focus(), 50);
+}
+
+function closeCmdPalette() {
+  const overlay = document.getElementById('cmd-palette-overlay');
+  if (!overlay) return;
+  overlay.classList.add('hidden');
+  cmdVisible = false;
+  const inp = document.getElementById('cmd-input');
+  if (inp) inp.value = '';
+}
+
+function renderCmdResults(query) {
+  const q = query.toLowerCase().trim();
+  cmdFiltered = q ? CMD_COMMANDS.filter(c => c.label.toLowerCase().includes(q)) : [...CMD_COMMANDS];
+  const container = document.getElementById('cmd-results');
+  if (!container) return;
+  if (cmdFiltered.length === 0) {
+    container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No commands found</div>';
+    return;
+  }
+  container.innerHTML = cmdFiltered.map((c, i) => `
+    <div class="cmd-item${i === cmdSelectedIdx ? ' selected' : ''}" data-idx="${i}">
+      <span class="cmd-icon">${c.icon}</span>
+      <span class="cmd-label">${c.label}</span>
+      ${c.kbd ? `<kbd class="cmd-kbd">${c.kbd}</kbd>` : ''}
+    </div>
+  `).join('');
+  // Attach click handlers
+  container.querySelectorAll('.cmd-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx, 10);
+      if (cmdFiltered[idx]) { closeCmdPalette(); cmdFiltered[idx].action(); }
+    });
+  });
+}
+
+document.getElementById('cmd-input')?.addEventListener('input', e => {
+  cmdSelectedIdx = 0;
+  renderCmdResults(e.target.value);
+});
+
+document.getElementById('cmd-input')?.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') { cmdSelectedIdx = Math.min(cmdSelectedIdx + 1, cmdFiltered.length - 1); renderCmdResults(e.target.value); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { cmdSelectedIdx = Math.max(cmdSelectedIdx - 1, 0); renderCmdResults(e.target.value); e.preventDefault(); }
+  else if (e.key === 'Enter') { if (cmdFiltered[cmdSelectedIdx]) { closeCmdPalette(); cmdFiltered[cmdSelectedIdx].action(); } }
+  else if (e.key === 'Escape') { closeCmdPalette(); }
+});
+
+document.getElementById('cmd-palette-overlay')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('cmd-palette-overlay')) closeCmdPalette();
+});
+
+document.getElementById('btn-cmdpal')?.addEventListener('click', openCmdPalette);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GLOBAL KEYBOARD SHORTCUTS
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Ignore when typing in input/textarea
+  const tag = document.activeElement?.tagName;
+  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.contentEditable === 'true';
+
+  // Ctrl+K → Command Palette (always works)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    if (cmdVisible) closeCmdPalette(); else openCmdPalette();
+    return;
+  }
+
+  // Ctrl+Shift+T → Toggle theme
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+    e.preventDefault();
+    toggleTheme();
+    return;
+  }
+
+  if (isTyping) return;  // Don't intercept below when typing
+
+  // Ctrl+1-4 → Switch tabs
+  if ((e.ctrlKey || e.metaKey) && e.key === '1') { e.preventDefault(); switchTab('chat'); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === '2') { e.preventDefault(); switchTab('browser'); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === '3') { e.preventDefault(); switchTab('history'); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === '4') { e.preventDefault(); switchTab('settings'); }
+
+  // Ctrl+N → New chat session
+  else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+    e.preventDefault();
+    if (typeof startNewSession === 'function') startNewSession();
+    switchTab('chat');
+  }
+
+  // Escape → Close modals / clear command input
+  else if (e.key === 'Escape') {
+    if (cmdVisible) closeCmdPalette();
+  }
+});
+
+// Helper: switch tab by name
+function switchTab(name) {
+  const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+  if (btn) btn.click();
+}

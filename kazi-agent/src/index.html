@@ -25,6 +25,39 @@
       --rs:        8px;
       --sh:        0 8px 32px rgba(0,0,0,.65);
     }
+    /* ── Light Mode ── */
+    [data-theme="light"] {
+      --bg:        #f6f8fa;
+      --bg2:       #ffffff;
+      --bg3:       #f0f2f5;
+      --bg4:       #e8ebef;
+      --border:    #d0d7de;
+      --cyan:      #0969da;
+      --cyan-dim:  rgba(9,105,218,.10);
+      --cyan-brd:  rgba(9,105,218,.30);
+      --text:      #1f2328;
+      --muted:     #656d76;
+      --dim:       #9ca3af;
+      --ok:        #1a7f37;
+      --warn:      #9a6700;
+      --err:       #d1242f;
+      --sh:        0 4px 16px rgba(0,0,0,.12);
+    }
+    [data-theme="light"] html,
+    [data-theme="light"] body { background:var(--bg); }
+    [data-theme="light"] #screen-auth {
+      background: linear-gradient(145deg,#f0f4fa 0%,#e8f0fe 60%,#dce8ff 100%);
+    }
+    [data-theme="light"] .tb-name {
+      background: linear-gradient(135deg,#0969da,#0550ae);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    [data-theme="light"] .auth-app-name {
+      background: linear-gradient(135deg,#0969da,#0550ae);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    [data-theme="light"] .msg.user .bubble { background:var(--cyan); color:#fff; }
+    [data-theme="light"] .win-btn:hover { background:rgba(0,0,0,.06); }
     html,body { height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); overflow:hidden; user-select:none; }
     .screen { display:flex; flex-direction:column; height:100vh; }
     .hidden { display:none !important; }
@@ -305,6 +338,43 @@
     .toast.err { background:rgba(248,81,73,.92); color:#fff; }
     .toast.inf { background:rgba(0,217,255,.92); color:#000; }
     @keyframes toastIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+    /* ═══ COMMAND PALETTE ═══ */
+    #cmd-palette-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999;
+      display:flex; align-items:flex-start; justify-content:center;
+      padding-top:15vh; backdrop-filter:blur(4px);
+    }
+    #cmd-palette {
+      width:560px; max-width:90vw; background:var(--bg2); border:1px solid var(--border);
+      border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.6); overflow:hidden;
+    }
+    #cmd-input-wrap {
+      display:flex; align-items:center; gap:10px;
+      padding:14px 16px; border-bottom:1px solid var(--border);
+    }
+    #cmd-input-wrap svg { color:var(--muted); flex-shrink:0; }
+    #cmd-input {
+      flex:1; background:none; border:none; outline:none;
+      color:var(--text); font-size:15px; font-family:inherit;
+    }
+    #cmd-input::placeholder { color:var(--muted); }
+    .cmd-results { max-height:340px; overflow-y:auto; padding:6px; }
+    .cmd-results::-webkit-scrollbar { width:4px; }
+    .cmd-results::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .cmd-item {
+      display:flex; align-items:center; gap:10px; padding:9px 10px;
+      border-radius:8px; cursor:pointer; color:var(--text); font-size:13px;
+      transition:background .1s;
+    }
+    .cmd-item:hover, .cmd-item.selected { background:var(--cyan-dim); color:var(--cyan); }
+    .cmd-item .cmd-icon { font-size:15px; width:22px; text-align:center; flex-shrink:0; }
+    .cmd-item .cmd-label { flex:1; }
+    .cmd-item .cmd-kbd { font-size:11px; color:var(--muted); background:var(--bg3); padding:2px 6px; border-radius:4px; border:1px solid var(--border); font-family:monospace; }
+    .cmd-section-title { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; padding:8px 10px 4px; }
+    /* ═══ LOADING SKELETON ═══ */
+    .skeleton { background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:6px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   </style>
 </head>
 <body>
@@ -408,6 +478,8 @@
 
     <div class="tb-extras">
       <div class="tb-token-pill" id="tb-token-pill" title="Token balance — click to refresh">⚡ — tokens</div>
+      <button class="tb-xbtn" id="btn-theme" title="Toggle light/dark mode (Ctrl+Shift+T)" aria-label="Toggle theme">🌙</button>
+      <button class="tb-xbtn" id="btn-cmdpal" title="Command palette (Ctrl+K)" aria-label="Open command palette">⌘</button>
       <button class="tb-xbtn" id="btn-pip" title="Picture-in-Picture">⊡</button>
       <button class="tb-xbtn" id="btn-aot" title="Always on Top">📌</button>
     </div>
@@ -677,6 +749,21 @@
 </div>
 
 <div id="toasts"></div>
+
+<!-- COMMAND PALETTE -->
+<div id="cmd-palette-overlay" class="hidden" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div id="cmd-palette">
+    <div id="cmd-input-wrap">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099z" fill="currentColor"/>
+      </svg>
+      <input id="cmd-input" type="text" placeholder="Search commands, tabs, settings…" autocomplete="off" spellcheck="false" />
+      <kbd style="font-size:11px;color:var(--muted);background:var(--bg3);padding:2px 6px;border-radius:4px;border:1px solid var(--border);font-family:monospace">ESC</kbd>
+    </div>
+    <div class="cmd-results" id="cmd-results"></div>
+  </div>
+</div>
+
 <script src="renderer.js"></script>
 </body>
 </html>
