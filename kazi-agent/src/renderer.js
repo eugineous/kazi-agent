@@ -381,7 +381,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
-window.kazi.onNavigate((tab) => switchTab(tab));
+window.kazi.onNavigate((tab) => {
+  if (tab === 'new-chat') { if (typeof startNewSession === 'function') startNewSession(); switchTab('chat'); }
+  else switchTab(tab);
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BROWSER

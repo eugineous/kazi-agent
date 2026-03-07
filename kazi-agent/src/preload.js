@@ -91,6 +91,16 @@ contextBridge.exposeInMainWorld('kazi', {
     onPip:       (fn)=> ipcRenderer.on('pip:state',    (_, s) => fn(s)),
   },
 
+  // ── Updates (auto-updater) ───────────────────────────────────────────────────
+  update: {
+    check:       ()    => ipcRenderer.invoke('update:check'),
+    download:    ()    => ipcRenderer.invoke('update:download'),
+    install:     ()    => ipcRenderer.invoke('update:install'),
+    onAvailable: (fn)  => ipcRenderer.on('update:available', (_, info) => fn(info)),
+    onProgress:  (fn)  => ipcRenderer.on('update:progress',  (_, pct)  => fn(pct)),
+    onReady:     (fn)  => ipcRenderer.on('update:ready',     ()        => fn()),
+  },
+
   // ── App-level ────────────────────────────────────────────────────────────
   onNavigate:       (fn) => ipcRenderer.on('navigate',        (_, r) => fn(r)),
   onSessionRestore: (fn) => ipcRenderer.on('session:restore', (_, u) => fn(u)),

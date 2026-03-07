@@ -327,6 +327,10 @@ function createTray() {
       { type: 'separator' },
       { label: 'Show', click: () => { mainWindow.show(); mainWindow.focus(); } },
       { label: 'Hide', click: () => mainWindow.hide() },
+      { label: '🆕 New Chat', click: () => {
+          mainWindow.show(); mainWindow.focus();
+          mainWindow.webContents.send('navigate', 'new-chat');
+      }},
       { type: 'separator' },
       { label: 'Start with Windows', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin,
         click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked, path: app.getPath('exe') }) },
