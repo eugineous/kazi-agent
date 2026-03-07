@@ -418,6 +418,74 @@ const chatContainer = $('#chatContainer');
 const commandInput  = $('#commandInput');
 const sendBtn       = $('#sendBtn');
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MARKDOWN RENDERER — simple regex-based, XSS-safe
+// ─────────────────────────────────────────────────────────────────────────────
+function sanitizeHtml(str) {
+  // Strip script/style tags and event attributes to prevent XSS
+  return str
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
+    .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/javascript\s*:/gi, '');
+}
+
+function renderMarkdown(raw) {
+  // Escape HTML entities first (prevents XSS from raw text)
+  let text = String(raw)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Fenced code blocks (``` ... ```) — process before inline code
+  text = text.replace(/```([a-zA-Z]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    return `<pre><code>${code.trim()}</code></pre>`;
+  });
+
+  // Inline code (`code`)
+  text = text.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+  // Headers (## before bold so ### doesn't conflict)
+  text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  text = text.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
+  text = text.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
+
+  // Horizontal rule
+  text = text.replace(/^---+$/gm, '<hr>');
+
+  // Bold (**text** or __text__)
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/__(.+?)__/g,     '<strong>$1</strong>');
+
+  // Italic (*text* or _text_)
+  text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  text = text.replace(/_([^_\n]+)_/g,   '<em>$1</em>');
+
+  // Unordered lists — group consecutive list items
+  text = text.replace(/^[*\-+] (.+)$/gm, '<li>$1</li>');
+  text = text.replace(/(<li>[\s\S]*?<\/li>)(\n(?!<li>)|$)/g, (match, items) => {
+    return `<ul>${items}</ul>`;
+  });
+
+  // Ordered lists
+  text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Re-wrap any consecutive <li> not already inside <ul> into <ol>
+  // (simple pass — wraps any remaining orphaned <li> groups)
+  text = text.replace(/(?<!<\/?[uo]l>)\n?(<li>[\s\S]*?<\/li>)\n?(?!<\/?[uo]l>)/g, '<ol>$1</ol>');
+
+  // Line breaks (double newline = paragraph break, single = <br>)
+  // Don't add <br> inside block-level HTML already inserted
+  text = text.replace(/\n\n/g, '</p><p>');
+  text = text.replace(/\n(?!<\/?(ul|ol|li|pre|h[1-3]|hr|p))/g, '<br>');
+
+  // Wrap in paragraph if no block elements at start
+  if (!/^<(h[1-3]|ul|ol|pre|hr)/.test(text.trim())) {
+    text = `<p>${text}</p>`;
+  }
+
+  return text;
+}
+
 function addMsg(text, type) {
   document.querySelectorAll('.typing').forEach(e => e.remove());
   const div = document.createElement('div');
@@ -425,7 +493,33 @@ function addMsg(text, type) {
   if (text.startsWith('[DONE]'))     { div.classList.add('done');  text = '✅ ' + text.slice(6).trim(); }
   if (text.startsWith('[ERROR]'))    { div.classList.add('error'); text = '❌ ' + text.slice(7).trim(); }
   if (text.startsWith('[QUESTION]')) { text = '❓ ' + text.slice(10).trim(); }
-  div.innerHTML = text.replace(/\n/g, '<br>');
+
+  if (type === 'agent') {
+    // Store raw text for copy/export
+    div.dataset.rawText = text;
+    // Render markdown for agent messages
+    div.innerHTML = renderMarkdown(text);
+    // Add copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'msg-copy-btn';
+    copyBtn.title = 'Copy message';
+    copyBtn.setAttribute('aria-label', 'Copy message');
+    copyBtn.innerHTML = '&#128203;'; // 📋
+    copyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rawText = div.dataset.rawText || div.innerText;
+      navigator.clipboard.writeText(rawText).then(() => {
+        toast('Copied!', 'success', 1600);
+      }).catch(() => {
+        toast('Copy failed', 'error', 2000);
+      });
+    });
+    div.appendChild(copyBtn);
+  } else {
+    div.dataset.rawText = text;
+    div.innerHTML = escapeHtml(text);
+  }
+
   chatContainer.appendChild(div);
   chatContainer.scrollTop = chatContainer.scrollHeight;
   return div;
@@ -453,33 +547,86 @@ function sendCommand() {
   sendBtn.disabled   = true;
   commandInput.value = '';
   autoGrow(commandInput);
+  updateInputState();
   window.kazi.agent.sendCommand(cmd);
 }
 
 sendBtn.addEventListener('click', sendCommand);
 
+// ── Character count + send button state ──
+const charCountEl = $('#char-count');
+
+function updateInputState() {
+  const len = commandInput.value.length;
+  if (charCountEl) {
+    if (len > 0) {
+      charCountEl.textContent = `${len} char${len !== 1 ? 's' : ''}`;
+      charCountEl.classList.remove('hidden');
+    } else {
+      charCountEl.classList.add('hidden');
+    }
+  }
+  // Disable send when empty
+  if (sendBtn) sendBtn.disabled = len === 0 || !agentReady;
+}
+
 commandInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCommand(); }
   autoGrow(commandInput);
 });
-commandInput.addEventListener('input', () => autoGrow(commandInput));
+commandInput.addEventListener('input', () => {
+  autoGrow(commandInput);
+  updateInputState();
+});
+
+// ── Export conversation ──
+$('#btn-export-chat')?.addEventListener('click', () => {
+  const msgs = chatContainer.querySelectorAll('.msg:not(.typing)');
+  if (!msgs.length) { toast('Nothing to export', 'info', 2000); return; }
+
+  let md = `# Kazi Conversation\n**Date**: ${new Date().toLocaleString()}\n\n`;
+  msgs.forEach(m => {
+    const raw = m.dataset.rawText || m.innerText.replace(/\n/g, ' ');
+    if (m.classList.contains('user'))  md += `**You**: ${raw}\n\n`;
+    if (m.classList.contains('agent')) md += `**Kazi**: ${raw}\n\n`;
+  });
+
+  // Use data URI download trick (no IPC needed)
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `kazi-chat-${new Date().toISOString().slice(0, 10)}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Conversation exported', 'success', 2200);
+});
+
+// ── Clear chat ──
+$('#btn-clear-chat')?.addEventListener('click', () => {
+  if (!confirm('Clear the current conversation?')) return;
+  chatContainer.innerHTML = '<div class="msg agent">Hey! I\'m <strong>Kazi</strong> ⚡ — your AI desktop agent.<br>Tell me what to do and I\'ll handle it on your screen.</div>';
+  toast('Chat cleared', 'info', 1800);
+});
 
 window.kazi.agent.onResponse((response) => {
   document.querySelectorAll('.typing').forEach(e => e.remove());
   addMsg(response, 'agent');
   recordSessionMsg('agent', response);
-  sendBtn.disabled = false;
   setStatus('Ready', 'ready');
+  updateInputState();
   loadMemoryUI();
 });
 
 window.kazi.agent.onStatus((status) => {
   switch (status) {
     case 'ready':
-      agentReady       = true;
-      sendBtn.disabled = false;
+      agentReady = true;
       setStatus('Agent ready ⚡', 'ready');
       toast('Kazi agent is ready! ⚡', 'success');
+      updateInputState();
       break;
     case 'disconnected':
       agentReady = false;
@@ -622,36 +769,73 @@ function recordSessionMsg(role, content) {
   }
 }
 
+// Keep all loaded sessions in memory for search filtering
+let _allHistorySessions = [];
+
+function buildHistoryCard(s, query) {
+  const d = document.createElement('div');
+  d.className = 'hist-card';
+  const when = s.ts ? new Date(s.ts).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+  const previewRaw = (s.preview || 'Empty session').slice(0, 100);
+  // Highlight matching text in preview
+  let previewHtml = escapeHtml(previewRaw);
+  if (query) {
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    previewHtml = previewHtml.replace(new RegExp(escaped, 'gi'), m => `<mark class="hist-highlight">${m}</mark>`);
+  }
+  d.innerHTML = `
+    <div class="hist-card-top">
+      <span class="hist-time">${when}</span>
+      <span class="hist-msgs">${s.msgCount || 1} msg${(s.msgCount || 1) !== 1 ? 's' : ''}</span>
+    </div>
+    <div class="hist-preview">${previewHtml}</div>`;
+  d.addEventListener('click', () => {
+    switchTab('chat');
+    addMsg(`Resuming session from ${when}…`, 'agent');
+    toast('Session loaded — continue chatting!', 'info');
+  });
+  return d;
+}
+
+function renderHistoryList(query) {
+  const list = $('#history-list');
+  if (!list) return;
+  const q = (query || '').toLowerCase().trim();
+  const filtered = q
+    ? _allHistorySessions.filter(s => (s.preview || '').toLowerCase().includes(q))
+    : _allHistorySessions;
+
+  list.innerHTML = '';
+  if (!filtered.length) {
+    list.innerHTML = q
+      ? '<div class="hist-no-results">No sessions match your search.</div>'
+      : '<div class="hist-empty">No history yet.<br>Every conversation is saved here automatically.</div>';
+    return;
+  }
+  filtered.forEach(s => list.appendChild(buildHistoryCard(s, q)));
+}
+
 async function loadHistoryUI() {
   const list = $('#history-list');
   if (!list || !window.kazi.history) return;
   const sessions = await window.kazi.history.get();
-  if (!sessions.length) {
-    list.innerHTML = '<div class="hist-empty">No history yet.<br>Every conversation is saved here automatically.</div>';
-    return;
-  }
-  list.innerHTML = '';
-  sessions.forEach(s => {
-    const d   = document.createElement('div');
-    d.className = 'hist-card';
-    const when = s.ts ? new Date(s.ts).toLocaleString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-    d.innerHTML = `
-      <div class="hist-card-top">
-        <span class="hist-time">${when}</span>
-        <span class="hist-msgs">${s.msgCount || 1} msg${(s.msgCount || 1) !== 1 ? 's' : ''}</span>
-      </div>
-      <div class="hist-preview">${escapeHtml((s.preview || 'Empty session').slice(0, 100))}</div>`;
-    d.addEventListener('click', () => {
-      switchTab('chat');
-      addMsg(`Resuming session from ${when}…`, 'agent');
-      toast('Session loaded — continue chatting!', 'info');
-    });
-    list.appendChild(d);
-  });
+  _allHistorySessions = sessions;
+
+  // Clear search field on reload
+  const searchEl = $('#hist-search');
+  if (searchEl) searchEl.value = '';
+
+  renderHistoryList('');
 }
+
+// History search live filter
+$('#hist-search')?.addEventListener('input', (e) => {
+  renderHistoryList(e.target.value);
+});
 
 document.querySelector('#btn-clear-history')?.addEventListener('click', async () => {
   if (!confirm('Clear all session history?')) return;
+  _allHistorySessions = [];
   const list = $('#history-list');
   if (list) list.innerHTML = '<div class="hist-empty">History cleared.</div>';
   toast('History cleared', 'info');
@@ -686,6 +870,8 @@ async function handleLogout() {
   aotActive     = false;
   const cc = $('#chatContainer');
   if (cc) cc.innerHTML = '<div class="msg agent">Hey! I\'m <strong>Kazi</strong> ⚡ — your AI desktop agent.<br>Tell me what to do and I\'ll handle it on your screen.</div>';
+  commandInput.value = '';
+  updateInputState();
   switchTab('chat');
   showAuthScreen();
   toast('Signed out', 'info');
@@ -703,6 +889,9 @@ $('#btn-logout').addEventListener('click', handleLogout);
     const maximized = await window.kazi.window.isMaximized();
     updateMaxIcon(maximized);
   } catch (_) {}
+
+  // Set initial send button state (disabled until agent is ready and input has content)
+  updateInputState();
 
   const user = await window.kazi.auth.getUser();
   if (user) {
