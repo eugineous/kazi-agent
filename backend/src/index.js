@@ -106,13 +106,27 @@ cron.schedule('* * * * *', async () => {
   } catch (e) { console.error('[Cron] Workflow scheduler error:', e); }
 });
 
+// ── Auto-migrate on startup ───────────────────────────────────
+async function runMigrations() {
+  try {
+    const schemaPath = require('path').join(__dirname, 'db', 'schema.sql');
+    const sql = require('fs').readFileSync(schemaPath, 'utf8');
+    await db.query(sql);
+    console.log('✅ DB migrations applied');
+  } catch (e) {
+    console.error('⚠️  Migration warning (non-fatal):', e.message);
+  }
+}
+
 // ── Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`⚡ Kazi Backend running on port ${PORT}`);
-  console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
-  console.log(`   DB:       ${process.env.DATABASE_URL ? 'connected' : 'NOT SET'}`);
-  console.log(`   Gemini:   ${process.env.GEMINI_API_KEY ? 'configured' : 'NOT SET'}`);
+runMigrations().then(() => {
+  server.listen(PORT, () => {
+    console.log(`⚡ Kazi Backend running on port ${PORT}`);
+    console.log(`   NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`   DB:       ${process.env.DATABASE_URL ? 'connected' : 'NOT SET'}`);
+    console.log(`   Gemini:   ${process.env.GEMINI_API_KEY ? 'configured' : 'NOT SET'}`);
+  });
 });
 
 module.exports = { app, pushToUser };
